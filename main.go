@@ -77,15 +77,21 @@ func main() {
 		// Read user input for the WebSocket server address
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter WebSocket server address to connect to (e.g., ws://localhost:8080/ws): ")
-		serverAddress, _ := reader.ReadString('\n')
-		serverAddress = strings.TrimSpace(serverAddress)
 
-		// Connect to the WebSocket server
-		ws, err := websocket.Dial(serverAddress, "", "http://localhost")
-		if err != nil {
-			log.Fatal(err)
+		var ws *websocket.Conn
+		for {
+			serverAddress, _ := reader.ReadString('\n')
+			serverAddress = strings.TrimSpace(serverAddress)
+
+			// Connect to the WebSocket server
+			ws, err := websocket.Dial(serverAddress, "", "http://localhost")
+			if err == nil {
+				clients[client{ws}] = true
+				break
+			}
+			log.Println(err)
+			log.Println("Please try again:")
 		}
-		clients[client{ws}] = true
 
 		// Goroutine to read messages from the WebSocket connection
 		go func() {
