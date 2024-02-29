@@ -1,4 +1,4 @@
-package main
+package utils
 
 import "golang.org/x/net/websocket"
 
@@ -65,8 +65,8 @@ type ConnectionInitMessage struct {
 func (m ConnectionInitMessage) GetMessageType() string { return "CONN_INIT" }
 
 type Client struct {
-	ws      *websocket.Conn
-	proc_id string
+	Ws      *websocket.Conn
+	Proc_id string
 }
 
 func NewClient(ws *websocket.Conn) Client {

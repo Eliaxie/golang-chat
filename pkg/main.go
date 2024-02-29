@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"golang.org/x/net/websocket"
+
+	. "golang-chat/pkg/utils"
 )
 
 // create a variable model of type Model
@@ -59,7 +61,7 @@ func messageHandler(ws *websocket.Conn) {
 
 func broadcast(msg string) {
 	for c := range model.Clients {
-		err := websocket.Message.Send(c.ws, msg)
+		err := websocket.Message.Send(c.Ws, msg)
 		if err != nil {
 			log.Println(err)
 			delete(model.Clients, c)

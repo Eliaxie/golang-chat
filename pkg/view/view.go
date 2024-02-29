@@ -1,13 +1,14 @@
-package main
+package view
 
 import (
 	"bufio"
 	"fmt"
-	"golang-chat/utils"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"golang-chat/pkg/utils"
 )
 
 var reader = bufio.NewReader(os.Stdin)
