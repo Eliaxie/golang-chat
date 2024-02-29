@@ -4,32 +4,31 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"golang-chat/pkg/model"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"golang.org/x/net/websocket"
-
-	. "golang-chat/pkg/utils"
 )
 
 // create a variable model of type Model
-var model Model = Model{}
+var globModel model.Model = model.Model{}
 
 func messageHandler(ws *websocket.Conn) {
-	model.Clients[NewClient(ws)] = true
+	globModel.Clients[model.NewClient(ws)] = true
 
 	for {
 		var data []byte
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			log.Println(err)
-			delete(model.Clients, NewClient(ws))
+			delete(globModel.Clients, model.NewClient(ws))
 			break
 		}
 
-		var msg Message
+		var msg model.Message
 		if err := json.Unmarshal(data, &msg); err != nil {
 			log.Println("Error deserializing message:", err)
 			continue
@@ -38,7 +37,7 @@ func messageHandler(ws *websocket.Conn) {
 		// Handle based on message type
 		switch msg.GetMessageType() {
 		case "TEXT":
-			var textMsg TextMessage
+			var textMsg model.TextMessage
 			if err := json.Unmarshal(data, &textMsg); err != nil {
 				log.Println("Error parsing TextMessage:", err)
 			} else {
@@ -46,7 +45,7 @@ func messageHandler(ws *websocket.Conn) {
 			}
 
 		case "CONN_INIT":
-			var connInitMsg ConnectionInitMessage
+			var connInitMsg model.ConnectionInitMessage
 			if err := json.Unmarshal(data, &connInitMsg); err != nil {
 				log.Println("Error parsing ConnectionInitMessage:", err)
 			} else {
@@ -60,11 +59,11 @@ func messageHandler(ws *websocket.Conn) {
 }
 
 func broadcast(msg string) {
-	for c := range model.Clients {
+	for c := range globModel.Clients {
 		err := websocket.Message.Send(c.Ws, msg)
 		if err != nil {
 			log.Println(err)
-			delete(model.Clients, c)
+			delete(globModel.Clients, c)
 		}
 	}
 }
@@ -88,7 +87,7 @@ func readMessages(ws *websocket.Conn) {
 }
 
 // Helper function to send a message over the websocket
-func sendMessage(ws *websocket.Conn, msg Message) error {
+func sendMessage(ws *websocket.Conn, msg model.Message) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -105,14 +104,14 @@ func connectAndCommunicate(reader *bufio.Reader) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	model.Clients[NewClient(ws)] = true
+	globModel.Clients[model.NewClient(ws)] = true
 
 	go readMessages(ws)
 
 	for {
 		fmt.Print("Enter message to send: ")
 		txt, _ := reader.ReadString('\n')
-		msg := TextMessage{MessageType: TEXT, Content: txt}
+		msg := model.TextMessage{MessageType: model.TEXT, Content: txt}
 
 		sendMessage(ws, msg)
 	}
@@ -121,11 +120,11 @@ func connectAndCommunicate(reader *bufio.Reader) {
 func main() {
 
 	// initialize model
-	model = Model{
-		Clients:            make(map[Client]bool),
-		GroupsBuffers:      make(map[GroupName][]PendingMessage),
-		Groups:             make(map[GroupName][]Client),
-		GroupsVectorClocks: make(map[GroupName]VectorClock),
+	globModel = model.Model{
+		Clients:            make(map[model.Client]bool),
+		GroupsBuffers:      make(map[model.GroupName][]model.PendingMessage),
+		Groups:             make(map[model.GroupName][]model.Client),
+		GroupsVectorClocks: make(map[model.GroupName]model.VectorClock),
 	}
 
 	reader := bufio.NewReader(os.Stdin)

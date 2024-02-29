@@ -1,4 +1,4 @@
-package utils
+package model
 
 import "golang.org/x/net/websocket"
 
@@ -79,7 +79,7 @@ type GroupName struct {
 }
 
 type VectorClock struct {
-	clock map[Client]int
+	Clock map[Client]int
 }
 
 type PendingMessage struct {
