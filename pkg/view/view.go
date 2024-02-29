@@ -22,13 +22,13 @@ func Start() {
 	DisplayMainMenu()
 }
 
-func DisplayInsertPort() string {
-	fmt.Println("Enter port number to start the server on (e.g., 8080): ")
-	return ReadStringTrimmed()
+func DisplayInsertPort() int {
+	fmt.Print("Enter port number to start the server on (e.g., 8080): ")
+	return ReadInt()
 }
 
 func DisplayInsertUsername() string {
-	fmt.Println("Enter username: ")
+	fmt.Print("Enter username: ")
 	return ReadStringTrimmed()
 }
 
@@ -51,10 +51,15 @@ func DisplayAddNewConnectionsMenu() {
 }
 
 func DisplayAddConnectionFromFile() {
-	fmt.Println("Enter the file path: ")
+	fmt.Print("Enter the file path (\"q\" to go back): ")
 	var connections []string
 	for {
 		filePath := ReadStringTrimmed()
+		if filePath == "q" {
+			DisplayAddNewConnectionsMenu()
+			break
+		}
+
 		// call the function to add the connections from the file
 		var err error
 		connections, err = utils.ReadConnectionsFromFile(filePath)
@@ -70,7 +75,7 @@ func DisplayAddConnectionFromFile() {
 
 func DisplayAddConnectionManually() {
 	for {
-		fmt.Println("Enter Connection: ")
+		fmt.Print("Enter Connection: ")
 		connection := ReadStringTrimmed()
 		// call the function to add the connection
 		log.Println("Connection added successfully")
@@ -86,7 +91,7 @@ func DisplayAddConnectionManually() {
 }
 
 func DisplayCreateNewGroup() {
-	fmt.Println("Enter the group name: ")
+	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
 	// call the function to create a new group
 	log.Println("Group" + groupName + " created successfully")
@@ -94,10 +99,10 @@ func DisplayCreateNewGroup() {
 }
 
 func DisplayOpenGroup() {
-	fmt.Println("Enter the group name: ")
+	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
 	// call the function to open the group
-	log.Println("Opening group" + groupName)
+	log.Println("Opening group " + groupName)
 }
 
 type MenuOption struct {
@@ -128,4 +133,13 @@ func ReadStringTrimmed() string {
 		log.Fatal(err)
 	}
 	return strings.TrimSpace(text)
+}
+
+func ReadInt() int {
+	text := ReadStringTrimmed()
+	num, err := strconv.Atoi(text)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return num
 }

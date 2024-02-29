@@ -7,10 +7,12 @@ import (
 	"golang-chat/pkg/model"
 	"log"
 	"net/http"
-	"os"
+
+	//"os"
 	"strings"
 
 	"golang.org/x/net/websocket"
+	"golang-chat/pkg/view"
 )
 
 // create a variable model of type Model
@@ -127,14 +129,15 @@ func main() {
 		GroupsVectorClocks: make(map[model.GroupName]model.VectorClock),
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter port number to start the server on (e.g., 8080): ")
-	port, _ := reader.ReadString('\n')
-	port = strings.TrimSpace(port)
+	// reader := bufio.NewReader(os.Stdin)
+	// fmt.Print("Enter port number to start the server on (e.g., 8080): ")
+	// port, _ := reader.ReadString('\n')
+	// port = strings.TrimSpace(port)
 
-	fmt.Printf("Starting WebSocket server on port %s\n", port)
-	go startServer(port)
+	// fmt.Printf("Starting WebSocket server on port %s\n", port)
+	// go startServer(port)
 
-	connectAndCommunicate(reader)
+	// connectAndCommunicate(reader)
+	view.Start()
 
 }
