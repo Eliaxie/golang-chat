@@ -8,13 +8,16 @@ import (
 	"strconv"
 	"strings"
 
+	"golang-chat/pkg/model"
 	"golang-chat/pkg/utils"
+
+	"github.com/fatih/color"
 )
 
 var reader = bufio.NewReader(os.Stdin)
 
 func Start() {
-	fmt.Println("Welcome to the chat app")
+	color.Green("Welcome to the chat app")
 	port := DisplayInsertPort()
 	log.Println("Port number entered: ", port)
 	username := DisplayInsertUsername()
@@ -24,7 +27,11 @@ func Start() {
 
 func DisplayInsertPort() int {
 	fmt.Print("Enter port number to start the server on (e.g., 8080): ")
-	return ReadInt()
+	val , err := ReadInt()
+	if err != nil {
+		val = model.DEFAULT_PORT
+	}
+	return val
 }
 
 func DisplayInsertUsername() string {
@@ -103,6 +110,7 @@ func DisplayOpenGroup() {
 	groupName := ReadStringTrimmed()
 	// call the function to open the group
 	log.Println("Opening group " + groupName)
+	// start reading messages from a certain group
 }
 
 type MenuOption struct {
@@ -135,11 +143,8 @@ func ReadStringTrimmed() string {
 	return strings.TrimSpace(text)
 }
 
-func ReadInt() int {
+func ReadInt() (int, error) {
 	text := ReadStringTrimmed()
 	num, err := strconv.Atoi(text)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return num
+	return num , err
 }

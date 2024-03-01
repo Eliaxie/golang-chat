@@ -95,3 +95,9 @@ type Model struct {
 	GroupsBuffers      map[GroupName][]PendingMessage
 	GroupsVectorClocks map[GroupName]VectorClock
 }
+
+
+const (
+	DEFAULT_PORT = 8080
+	DEFAULT_CONNECTION = "ws//localhost:8080/ws"
+)
