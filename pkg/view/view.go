@@ -22,9 +22,12 @@ func Start(c *controller.Controller) {
 	color.Green("Welcome to the chat app")
 	port := DisplayInsertPort()
 	_controller.StartServer(strconv.Itoa(port))
+	// clear the console
+	MoveScreenUp()
 	log.Println("Server started on port ", port)
 	username := DisplayInsertUsername()
 	log.Println("Username entered: ", username)
+	MoveScreenUp()
 	DisplayMainMenu()
 }
 
@@ -102,6 +105,7 @@ func DisplayAddConnectionManually() {
 		// ask the user if they want to add another connection
 		fmt.Println("Do you want to add another connection? (y/n)")
 		choice := ReadStringTrimmed()
+		MoveScreenUp()
 		if choice == "n" {
 			break
 		}
@@ -123,27 +127,10 @@ func DisplayOpenGroup() {
 	// call the function to open the group
 	log.Println("Opening group " + groupName)
 	// start reading messages from a certain group
+	ClearScreen()
 	DisplayRoom(groupName)
 }
 
-type MenuOption struct {
-	Option string
-	Action func()
-}
 
-func DisplayMenu(options []MenuOption) {
-	for i, option := range options {
-		fmt.Printf("%d. %s\n", i+1, option.Option)
-	}
 
-	for {
-		choice := ReadStringTrimmed()
 
-		if choiceInt, err := strconv.Atoi(choice); err == nil && choiceInt > 0 && choiceInt <= len(options) {
-			options[choiceInt-1].Action()
-			break
-		} else {
-			fmt.Println("Invalid choice")
-		}
-	}
-}
