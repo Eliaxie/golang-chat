@@ -20,12 +20,20 @@ type Message interface {
 	GetMessageType() MessageType
 }
 
+type BaseMessage struct {
+	MessageType MessageType
+}
+
+func (m BaseMessage) GetMessageType() MessageType {
+	return CONN_RESTORE_RESPONSE
+}
+
 type ConnectionRestoreResponseMessage struct {
 	// tbd
 }
 
-func (m ConnectionRestoreResponseMessage) GetMessageType() string {
-	return "CONN_RESTORE_RESPONSE"
+func (m ConnectionRestoreResponseMessage) GetMessageType() MessageType {
+	return CONN_RESTORE_RESPONSE
 }
 
 type SyncPeersMessage struct {
@@ -33,21 +41,21 @@ type SyncPeersMessage struct {
 	PeerIDs     []string    `json:"peerIds"`
 }
 
-func (m SyncPeersMessage) GetMessageType() string { return "SYNC_PEERS" }
+func (m SyncPeersMessage) GetMessageType() MessageType { return SYNC_PEERS }
 
 type SyncPeersResponseMessage struct {
 	// tbd
 }
 
-func (m SyncPeersResponseMessage) GetMessageType() string {
-	return "SYNC_PEERS_RESPONSE"
+func (m SyncPeersResponseMessage) GetMessageType() MessageType {
+	return SYNC_PEERS_RESPONSE
 }
 
 type GroupCreateMessage struct {
 	// tbd
 }
 
-func (m GroupCreateMessage) GetMessageType() string { return "GROUP_CREATE" }
+func (m GroupCreateMessage) GetMessageType() MessageType { return GROUP_CREATE }
 
 type TextMessage struct {
 	MessageType MessageType `json:"messageType"`
@@ -70,7 +78,7 @@ type ConnectionInitResponseMessage struct {
 	ClientID    string      `json:"clientId"`
 }
 
-func (m ConnectionInitResponseMessage) GetMessageType() string { return "CONN_INIT_RESP" }
+func (m ConnectionInitResponseMessage) GetMessageType() MessageType { return CONN_INIT_RESP }
 
 type Client struct {
 	Ws      *websocket.Conn

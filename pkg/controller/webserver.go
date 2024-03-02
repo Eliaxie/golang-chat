@@ -80,12 +80,12 @@ func messageHandler(ws *websocket.Conn) {
 
 		var msg model.Message
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Println("1Error deserializing message:", err)
+			log.Println("Error deserializing message:", err)
 			continue
 		}
 
 		// Handle based on message type
-		switch msg.MessageType {
+		switch msg.GetMessageType() {
 		case model.TEXT:
 			var textMsg model.TextMessage
 			if err := json.Unmarshal(data, &textMsg); err != nil {
@@ -103,7 +103,7 @@ func messageHandler(ws *websocket.Conn) {
 			}
 
 		default:
-			log.Println("Unknown message type:", msg.MessageType)
+			log.Println("Unknown message type:", msg.GetMessageType())
 		}
 	}
 }
