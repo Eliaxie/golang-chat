@@ -76,15 +76,17 @@ func messageHandler(ws *websocket.Conn) {
 			break
 		}
 
+		log.Println(string(data))
+
 		var msg model.Message
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Println("Error deserializing message:", err)
+			log.Println("1Error deserializing message:", err)
 			continue
 		}
 
 		// Handle based on message type
-		switch msg.GetMessageType() {
-		case "TEXT":
+		switch msg.MessageType {
+		case model.TEXT:
 			var textMsg model.TextMessage
 			if err := json.Unmarshal(data, &textMsg); err != nil {
 				log.Println("Error parsing TextMessage:", err)
@@ -92,7 +94,7 @@ func messageHandler(ws *websocket.Conn) {
 				fmt.Println("Received text message:", textMsg.Content)
 			}
 
-		case "CONN_INIT":
+		case model.CONN_INIT:
 			var connInitMsg model.ConnectionInitMessage
 			if err := json.Unmarshal(data, &connInitMsg); err != nil {
 				log.Println("Error parsing ConnectionInitMessage:", err)
@@ -101,7 +103,7 @@ func messageHandler(ws *websocket.Conn) {
 			}
 
 		default:
-			log.Println("Unknown message type:", msg.GetMessageType())
+			log.Println("Unknown message type:", msg.MessageType)
 		}
 	}
 }

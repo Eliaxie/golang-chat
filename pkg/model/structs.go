@@ -16,8 +16,8 @@ const (
 )
 
 // Generic Message Interface
-type Message interface {
-	GetMessageType() string
+type Message struct {
+	MessageType MessageType `json:"messageType"`
 }
 
 type ConnectionRestoreResponseMessage struct {
