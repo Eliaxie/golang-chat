@@ -7,6 +7,7 @@ type MessageType int
 const (
 	TEXT MessageType = iota
 	CONN_INIT
+	CONN_INIT_RESP
 	CONN_RESTORE
 	CONN_RESTORE_RESPONSE
 	SYNC_PEERS
@@ -64,6 +65,13 @@ type ConnectionInitMessage struct {
 
 func (m ConnectionInitMessage) GetMessageType() string { return "CONN_INIT" }
 
+type ConnectionInitResponseMessage struct {
+	MessageType MessageType `json:"messageType"`
+	ClientID    string      `json:"clientId"`
+}
+
+func (m ConnectionInitResponseMessage) GetMessageType() string { return "CONN_INIT_RESP" }
+
 type Client struct {
 	Ws      *websocket.Conn
 	Proc_id string
@@ -90,14 +98,14 @@ type PendingMessage struct {
 
 // Model
 type Model struct {
-	Clients            map[Client]bool
+	Name               string
+	Clients            map[*Client]bool
 	Groups             map[GroupName][]Client
 	GroupsBuffers      map[GroupName][]PendingMessage
 	GroupsVectorClocks map[GroupName]VectorClock
 }
 
-
 const (
-	DEFAULT_PORT = 8080
+	DEFAULT_PORT       = 8080
 	DEFAULT_CONNECTION = "ws//localhost:8080/ws"
 )

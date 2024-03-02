@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"golang-chat/pkg/controller"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/utils"
 
@@ -15,8 +16,10 @@ import (
 )
 
 var reader = bufio.NewReader(os.Stdin)
+var _controller *controller.Controller
 
-func Start() {
+func Start(c *controller.Controller) {
+	_controller = c
 	color.Green("Welcome to the chat app")
 	port := DisplayInsertPort()
 	log.Println("Port number entered: ", port)
@@ -27,10 +30,11 @@ func Start() {
 
 func DisplayInsertPort() int {
 	fmt.Print("Enter port number to start the server on (e.g., 8080): ")
-	val , err := ReadInt()
+	val, err := ReadInt()
 	if err != nil {
 		val = model.DEFAULT_PORT
 	}
+	_controller.StartServer(strconv.Itoa(val))
 	return val
 }
 
@@ -87,6 +91,7 @@ func DisplayAddConnectionManually() {
 		// call the function to add the connection
 		log.Println("Connection added successfully")
 		log.Print(connection)
+		_controller.AddNewConnection(connection)
 		// ask the user if they want to add another connection
 		fmt.Println("Do you want to add another connection? (y/n)")
 		choice := ReadStringTrimmed()
@@ -146,5 +151,5 @@ func ReadStringTrimmed() string {
 func ReadInt() (int, error) {
 	text := ReadStringTrimmed()
 	num, err := strconv.Atoi(text)
-	return num , err
+	return num, err
 }
