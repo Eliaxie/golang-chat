@@ -2,13 +2,22 @@ package model
 
 import "golang.org/x/net/websocket"
 
+type ConsistencyModel int
+
+const (
+	FIFO ConsistencyModel = iota
+	CAUSAL
+	GLOBAL
+	LINEARIZABLE
+)
+
 type MessageType int
 
 const (
-	TEXT MessageType = iota
-	BASE
+	BASE MessageType = iota
+	TEXT
 	CONN_INIT
-	CONN_INIT_RESP
+	CONN_INIT_RESPONSE
 	CONN_RESTORE
 	CONN_RESTORE_RESPONSE
 	SYNC_PEERS
@@ -16,7 +25,6 @@ const (
 	GROUP_CREATE
 )
 
-// Generic Message Interface
 type Message interface {
 	GetMessageType() MessageType
 }
@@ -26,15 +34,7 @@ type BaseMessage struct {
 }
 
 func (m BaseMessage) GetMessageType() MessageType {
-	return BASE
-}
-
-type ConnectionRestoreResponseMessage struct {
-	// tbd
-}
-
-func (m ConnectionRestoreResponseMessage) GetMessageType() MessageType {
-	return CONN_RESTORE_RESPONSE
+	return m.MessageType
 }
 
 type SyncPeersMessage struct {
@@ -42,23 +42,16 @@ type SyncPeersMessage struct {
 	PeerIDs []string `json:"peerIds"`
 }
 
-func (m SyncPeersMessage) GetMessageType() MessageType { return SYNC_PEERS }
-
 type SyncPeersResponseMessage struct {
 	// tbd
 }
 
-func (m SyncPeersResponseMessage) GetMessageType() MessageType {
-	return SYNC_PEERS_RESPONSE
-}
-
 type GroupCreateMessage struct {
 	BaseMessage
-	Group   Group              `json:"group"`
-	Clients []SerializedClient `json:"clients"`
+	Group            Group              `json:"group"`
+	ConsistencyModel ConsistencyModel   `json:"consistencyModel"`
+	Clients          []SerializedClient `json:"clients"`
 }
-
-func (m GroupCreateMessage) GetMessageType() MessageType { return GROUP_CREATE }
 
 type TextMessage struct {
 	BaseMessage
@@ -67,21 +60,25 @@ type TextMessage struct {
 	VectorClock VectorClock `json:"vectorClock"`
 }
 
-func (m TextMessage) GetMessageType() MessageType { return TEXT }
-
 type ConnectionInitMessage struct {
 	BaseMessage
 	ClientID string `json:"clientId"`
 }
-
-func (m ConnectionInitMessage) GetMessageType() MessageType { return CONN_INIT }
 
 type ConnectionInitResponseMessage struct {
 	BaseMessage
 	ClientID string `json:"clientId"`
 }
 
-func (m ConnectionInitResponseMessage) GetMessageType() MessageType { return CONN_INIT_RESP }
+type ConnectionRestoreMessage struct {
+	BaseMessage
+	ClientID string `json:"clientId"`
+}
+
+type ConnectionRestoreResponseMessage struct {
+	BaseMessage
+	ClientID string `json:"clientId"`
+}
 
 type Client struct {
 	Ws      *websocket.Conn
@@ -115,7 +112,9 @@ type PendingMessage struct {
 // Model
 type Model struct {
 	Name               string // username-uniqueIdentifier
-	Clients            map[*Client]bool
+	PendingClients     map[Client]bool
+	Clients            map[Client]bool
+	GroupsConsistency  map[Group]ConsistencyModel
 	Groups             map[Group][]Client
 	GroupsBuffers      map[Group][]PendingMessage
 	GroupsVectorClocks map[Group]VectorClock
