@@ -1,8 +1,6 @@
 package view
 
 import (
-	"log"
-
 	"github.com/fatih/color"
 )
 
@@ -15,7 +13,6 @@ func DisplayRoom(roomName string) {
 func ListenForMessages() {
 	for {
 		value := ReadStringTrimmed()
-		log.Println("Sending message: ", value)
 		_controller.BroadcastMessage(value)
 	}
 }

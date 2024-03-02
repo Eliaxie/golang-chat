@@ -28,12 +28,8 @@ func (c *Controller) addNewConnectionSlave(serverAddress string) {
 	go readMessages(ws)
 }
 
-func sendMessageSlave(ws *websocket.Conn, msg model.Message) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	return websocket.Message.Send(ws, string(data))
+func sendMessageSlave(ws *websocket.Conn, msg []byte) error {
+	return websocket.Message.Send(ws, msg)
 }
 
 func readMessages(ws *websocket.Conn) {
@@ -44,17 +40,6 @@ func readMessages(ws *websocket.Conn) {
 			break
 		}
 		fmt.Println("Received message:", msg)
-	}
-}
-
-func broadcast(msg string, globModel *model.Model) {
-	for c := range globModel.Clients {
-		err := websocket.Message.Send(c.Ws, msg)
-		if err != nil {
-			log.Println(err)
-			delete(globModel.Clients, c)
-		}
-		log.Println("Sent message to client: ", msg)
 	}
 }
 

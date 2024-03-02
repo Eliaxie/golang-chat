@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"golang-chat/pkg/model"
 )
@@ -16,11 +17,16 @@ func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client model.C
 }
 
 func (c *Controller) SendMessage(text string, client model.Client) {
-	sendMessageSlave(client.Ws, model.TextMessage{Content: text, Group: model.GroupName{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}})
+	msg := model.TextMessage{Content: text, Group: model.GroupName{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
+	data, _ := json.Marshal(msg)
+	println("Sending message:", string(data))
+	sendMessageSlave(client.Ws, data)
 }
 
 func (c *Controller) BroadcastMessage(text string) {
-	broadcast(text, c.Model)
+	for client := range c.Model.Clients {
+		c.SendMessage(text, *client)
+	}
 }
 
 func (c *Controller) AddNewConnection(connection string) {

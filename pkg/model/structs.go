@@ -6,6 +6,7 @@ type MessageType int
 
 const (
 	TEXT MessageType = iota
+	BASE
 	CONN_INIT
 	CONN_INIT_RESP
 	CONN_RESTORE
@@ -25,7 +26,7 @@ type BaseMessage struct {
 }
 
 func (m BaseMessage) GetMessageType() MessageType {
-	return CONN_RESTORE_RESPONSE
+	return BASE
 }
 
 type ConnectionRestoreResponseMessage struct {
@@ -95,7 +96,7 @@ type GroupName struct {
 }
 
 type VectorClock struct {
-	Clock map[Client]int
+	Clock map[string]int `json:"clock"`
 }
 
 type PendingMessage struct {
