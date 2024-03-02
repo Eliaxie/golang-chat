@@ -115,5 +115,5 @@ type Model struct {
 
 const (
 	DEFAULT_PORT       = 8080
-	DEFAULT_CONNECTION = "ws//localhost:8080/ws"
+	DEFAULT_CONNECTION = "ws://localhost:8080/ws"
 )

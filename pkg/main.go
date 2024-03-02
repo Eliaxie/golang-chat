@@ -25,16 +25,6 @@ func main() {
 
 	_controller := controller.Controller{Model: globModel}
 
-	// reader := bufio.NewReader(os.Stdin)
-	// fmt.Print("Enter port number to start the server on (e.g., 8080): ")
-	// port, _ := reader.ReadString('\n')
-	// port = strings.TrimSpace(port)
-
-	// fmt.Printf("Starting WebSocket server on port %s\n", port)
-	// go startServer(port)
-
-	// connectAndCommunicate(reader)
-
 	view.Start(&_controller)
 
 }

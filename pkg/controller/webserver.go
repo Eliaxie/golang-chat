@@ -78,7 +78,7 @@ func messageHandler(ws *websocket.Conn) {
 
 		log.Println(string(data))
 
-		var msg model.Message
+		var msg model.BaseMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			log.Println("Error deserializing message:", err)
 			continue

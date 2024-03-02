@@ -19,6 +19,10 @@ func (c *Controller) SendMessage(text string, client model.Client) {
 	sendMessageSlave(client.Ws, model.TextMessage{Content: text, Group: model.GroupName{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}})
 }
 
+func (c *Controller) BroadcastMessage(text string) {
+	broadcast(text, c.Model)
+}
+
 func (c *Controller) AddNewConnection(connection string) {
 	c.addNewConnectionSlave(connection)
 }

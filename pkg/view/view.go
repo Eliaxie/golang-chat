@@ -30,7 +30,7 @@ func Start(c *controller.Controller) {
 }
 
 func DisplayInsertPort() int {
-	fmt.Print("Enter port number to start the server on (e.g., 8080): ")
+	fmt.Print("Enter port number to start the server on (default ", model.DEFAULT_PORT, "): ")
 	val, err := ReadInt()
 	if err != nil {
 		val = model.DEFAULT_PORT
@@ -87,10 +87,17 @@ func DisplayAddConnectionFromFile() {
 
 func DisplayAddConnectionManually() {
 	for {
-		fmt.Print("Enter Connection: ")
+		fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
 		connection := ReadStringTrimmed()
+		if connection == "q" {
+			DisplayAddNewConnectionsMenu()
+			break
+		}
+		if connection == "" {
+			connection = model.DEFAULT_CONNECTION
+		}
+		
 		// call the function to add the connection
-		log.Println("Connection added successfully ")
 		log.Print(connection)
 		_controller.AddNewConnection(connection)
 		// ask the user if they want to add another connection
@@ -117,6 +124,7 @@ func DisplayOpenGroup() {
 	// call the function to open the group
 	log.Println("Opening group " + groupName)
 	// start reading messages from a certain group
+	DisplayRoom(groupName)
 }
 
 type MenuOption struct {
