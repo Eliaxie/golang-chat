@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	"golang-chat/pkg/controller"
 	"golang-chat/pkg/model"
@@ -96,7 +95,7 @@ func DisplayAddConnectionManually() {
 		if connection == "" {
 			connection = model.DEFAULT_CONNECTION
 		}
-		
+
 		// call the function to add the connection
 		log.Print(connection)
 		_controller.AddNewConnection(connection)
@@ -147,18 +146,4 @@ func DisplayMenu(options []MenuOption) {
 			fmt.Println("Invalid choice")
 		}
 	}
-}
-
-func ReadStringTrimmed() string {
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.TrimSpace(text)
-}
-
-func ReadInt() (int, error) {
-	text := ReadStringTrimmed()
-	num, err := strconv.Atoi(text)
-	return num, err
 }

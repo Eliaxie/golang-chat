@@ -25,6 +25,7 @@ func (c *Controller) addNewConnectionSlave(serverAddress string) {
 	client := model.NewClient(ws)
 	c.Model.Clients[&client] = true
 	initializeClient(ws, &client)
+	go readMessages(ws)
 }
 
 func sendMessageSlave(ws *websocket.Conn, msg model.Message) error {
@@ -53,6 +54,7 @@ func broadcast(msg string, globModel *model.Model) {
 			log.Println(err)
 			delete(globModel.Clients, c)
 		}
+		log.Println("Sent message to client: ", msg)
 	}
 }
 
