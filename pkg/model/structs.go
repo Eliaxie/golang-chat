@@ -16,8 +16,8 @@ const (
 )
 
 // Generic Message Interface
-type Message struct {
-	MessageType MessageType `json:"messageType"`
+type Message interface {
+	GetMessageType() MessageType
 }
 
 type ConnectionRestoreResponseMessage struct {
@@ -56,14 +56,14 @@ type TextMessage struct {
 	VectorClock VectorClock `json:"vectorClock"`
 }
 
-func (m TextMessage) GetMessageType() string { return "TEXT" }
+func (m TextMessage) GetMessageType() MessageType { return TEXT }
 
 type ConnectionInitMessage struct {
 	MessageType MessageType `json:"messageType"`
 	ClientID    string      `json:"clientId"`
 }
 
-func (m ConnectionInitMessage) GetMessageType() string { return "CONN_INIT" }
+func (m ConnectionInitMessage) GetMessageType() MessageType { return CONN_INIT }
 
 type ConnectionInitResponseMessage struct {
 	MessageType MessageType `json:"messageType"`

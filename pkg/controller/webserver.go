@@ -27,7 +27,7 @@ func (c *Controller) addNewConnectionSlave(serverAddress string) {
 	initializeClient(ws, &client)
 }
 
-func sendMessage(ws *websocket.Conn, msg model.Message) error {
+func sendMessageSlave(ws *websocket.Conn, msg model.Message) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err

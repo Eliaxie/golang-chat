@@ -22,7 +22,8 @@ func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
 	port := DisplayInsertPort()
-	log.Println("Port number entered: ", port)
+	_controller.StartServer(strconv.Itoa(port))
+	log.Println("Server started on port ", port)
 	username := DisplayInsertUsername()
 	log.Println("Username entered: ", username)
 	DisplayMainMenu()
@@ -34,7 +35,6 @@ func DisplayInsertPort() int {
 	if err != nil {
 		val = model.DEFAULT_PORT
 	}
-	_controller.StartServer(strconv.Itoa(val))
 	return val
 }
 
@@ -75,9 +75,10 @@ func DisplayAddConnectionFromFile() {
 		var err error
 		connections, err = utils.ReadConnectionsFromFile(filePath)
 		if err == nil {
+			_controller.AddNewConnections(connections)
 			break
 		}
-		fmt.Println("Invalid file path. Please try again.")
+		fmt.Println("Error while trying to read the file. Please try again. (\"q\" to go back)")
 	}
 	log.Println("Connections added successfully")
 	log.Print(connections)
@@ -89,7 +90,7 @@ func DisplayAddConnectionManually() {
 		fmt.Print("Enter Connection: ")
 		connection := ReadStringTrimmed()
 		// call the function to add the connection
-		log.Println("Connection added successfully")
+		log.Println("Connection added successfully ")
 		log.Print(connection)
 		_controller.AddNewConnection(connection)
 		// ask the user if they want to add another connection
