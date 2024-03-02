@@ -22,7 +22,7 @@ type Message interface {
 }
 
 type BaseMessage struct {
-	MessageType MessageType
+	MessageType MessageType `json:"messageType"`
 }
 
 func (m BaseMessage) GetMessageType() MessageType {
@@ -38,8 +38,8 @@ func (m ConnectionRestoreResponseMessage) GetMessageType() MessageType {
 }
 
 type SyncPeersMessage struct {
-	MessageType MessageType `json:"messageType"`
-	PeerIDs     []string    `json:"peerIds"`
+	BaseMessage
+	PeerIDs []string `json:"peerIds"`
 }
 
 func (m SyncPeersMessage) GetMessageType() MessageType { return SYNC_PEERS }
@@ -53,30 +53,32 @@ func (m SyncPeersResponseMessage) GetMessageType() MessageType {
 }
 
 type GroupCreateMessage struct {
-	// tbd
+	BaseMessage
+	Group   Group              `json:"group"`
+	Clients []SerializedClient `json:"clients"`
 }
 
 func (m GroupCreateMessage) GetMessageType() MessageType { return GROUP_CREATE }
 
 type TextMessage struct {
-	MessageType MessageType `json:"messageType"`
+	BaseMessage
 	Content     string      `json:"content"`
-	Group       GroupName   `json:"group"`
+	Group       Group       `json:"group"`
 	VectorClock VectorClock `json:"vectorClock"`
 }
 
 func (m TextMessage) GetMessageType() MessageType { return TEXT }
 
 type ConnectionInitMessage struct {
-	MessageType MessageType `json:"messageType"`
-	ClientID    string      `json:"clientId"`
+	BaseMessage
+	ClientID string `json:"clientId"`
 }
 
 func (m ConnectionInitMessage) GetMessageType() MessageType { return CONN_INIT }
 
 type ConnectionInitResponseMessage struct {
-	MessageType MessageType `json:"messageType"`
-	ClientID    string      `json:"clientId"`
+	BaseMessage
+	ClientID string `json:"clientId"`
 }
 
 func (m ConnectionInitResponseMessage) GetMessageType() MessageType { return CONN_INIT_RESP }
@@ -86,11 +88,16 @@ type Client struct {
 	Proc_id string
 }
 
+type SerializedClient struct {
+	Proc_id  string `json:"proc_id"`
+	HostName string `json:"hostName"`
+}
+
 func NewClient(ws *websocket.Conn) Client {
 	return Client{ws, ""}
 }
 
-type GroupName struct {
+type Group struct {
 	Name   string
 	Madeby string
 }
@@ -107,11 +114,11 @@ type PendingMessage struct {
 
 // Model
 type Model struct {
-	Name               string
+	Name               string // username-uniqueIdentifier
 	Clients            map[*Client]bool
-	Groups             map[GroupName][]Client
-	GroupsBuffers      map[GroupName][]PendingMessage
-	GroupsVectorClocks map[GroupName]VectorClock
+	Groups             map[Group][]Client
+	GroupsBuffers      map[Group][]PendingMessage
+	GroupsVectorClocks map[Group]VectorClock
 }
 
 const (

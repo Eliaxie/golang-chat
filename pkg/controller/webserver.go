@@ -63,13 +63,15 @@ func messageHandler(ws *websocket.Conn) {
 			break
 		}
 
-		log.Println(string(data))
+		log.Println("handled data: ", string(data))
 
 		var msg model.BaseMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			log.Println("Error deserializing message:", err)
 			continue
 		}
+
+		log.Println("unmarshaled data: ", msg)
 
 		// Handle based on message type
 		switch msg.GetMessageType() {

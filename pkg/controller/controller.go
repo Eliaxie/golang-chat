@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang-chat/pkg/model"
+	"log"
 )
 
 type Controller struct {
@@ -14,18 +15,25 @@ func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client model.C
 	fmt.Println("Received text message:", textMsg.Content)
 	c.Model.GroupsBuffers[textMsg.Group] =
 		append(c.Model.GroupsBuffers[textMsg.Group], model.PendingMessage{Content: textMsg.Content, Client: client, VectorClock: textMsg.VectorClock})
+
+	c.tryAcceptMessage(textMsg, client)
 }
 
-func (c *Controller) SendMessage(text string, client model.Client) {
-	msg := model.TextMessage{Content: text, Group: model.GroupName{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
-	data, _ := json.Marshal(msg)
-	println("Sending message:", string(data))
-	sendMessageSlave(client.Ws, data)
+func (c *Controller) SendMessage(message model.BaseMessage, client model.Client) {
+	data, _ := json.Marshal(message)
+	log.Print(data)
+}
+
+func (c *Controller) SendTextMessage(text string, client model.Client) {
+		msg := model.TextMessage{Content: text, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
+		data, _ := json.Marshal(msg)
+		println("Sending message:", string(data))
+		sendMessageSlave(client.Ws, data)
 }
 
 func (c *Controller) BroadcastMessage(text string) {
 	for client := range c.Model.Clients {
-		c.SendMessage(text, *client)
+		c.SendTextMessage(text, *client)
 	}
 }
 
@@ -41,4 +49,10 @@ func (c *Controller) AddNewConnections(connection []string) {
 
 func (c *Controller) StartServer(port string) {
 	InitWebServer(port, c.Model)
+}
+
+func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Client) {
+	// logic to accept message using vector clocks
+	// push to view
+
 }
