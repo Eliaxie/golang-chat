@@ -18,9 +18,9 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 }
 
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client model.Client) {
+	delete(controller.Model.PendingClients, client)
 	client.Proc_id = connInitRespMsg.ClientID
 	controller.Model.Clients[client] = true
-	delete(controller.Model.PendingClients, client)
 }
 
 func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.ConnectionRestoreMessage, client model.Client) {
