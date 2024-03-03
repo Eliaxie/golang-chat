@@ -29,4 +29,4 @@ This project is a chat application built with Go. It uses a client-server archit
 To run the server:
 
 ```sh
-go run main.go
+go run pkg/main.go
