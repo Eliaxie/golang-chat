@@ -21,6 +21,6 @@ func ListenForMessages() {
 		}
 
 		log.Println("Sending message: ", value)
-		_controller.BroadcastMessage(value)
+		_controller.BroadcastMessage(value) // SendGroupMessage
 	}
 }

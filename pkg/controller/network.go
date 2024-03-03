@@ -39,3 +39,9 @@ func (c *Controller) BroadcastMessage(text string) {
 		c.SendTextMessage(text, client)
 	}
 }
+
+func (c *Controller) SendGroupMessage(text string, group model.Group) {
+	c.multicastMessage(model.TextMessage{
+		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
+		Content:     text, Group: group, VectorClock: model.VectorClock{}}, c.Model.Groups[group])
+}
