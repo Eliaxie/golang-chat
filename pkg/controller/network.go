@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-// Only function without the client == 2 check
+// Only send function not checking if client is in the model
 func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
 	data, _ := json.Marshal(message)
 	log.Print(string(data))

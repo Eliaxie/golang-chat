@@ -8,6 +8,7 @@ import (
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client model.Client) {
 	client.Proc_id = connInitMsg.ClientID
 	controller.Model.Clients[client] = true
+	delete(controller.Model.PendingClients, client)
 
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
@@ -19,6 +20,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client model.Client) {
 	client.Proc_id = connInitRespMsg.ClientID
 	controller.Model.Clients[client] = true
+	delete(controller.Model.PendingClients, client)
 }
 
 func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.ConnectionRestoreMessage, client model.Client) {
@@ -30,11 +32,22 @@ func (c *Controller) HandleConnectionRestoreResponseMessage(connRestoreRespMsg m
 }
 
 func (c *Controller) HandleSyncPeersMessage(syncPeersMsg model.SyncPeersMessage, client model.Client) {
-	panic("unimplemented")
+	serializedClients := []model.SerializedClient{}
+	for client, active := range controller.Model.Clients {
+		if active {
+			serializedClients = append(serializedClients, model.SerializedClient{Proc_id: client.Proc_id, HostName: client.Ws.RemoteAddr().String()})
+		}
+	}
+	c.SendMessage(model.SyncPeersResponseMessage{
+		BaseMessage: model.BaseMessage{MessageType: model.SYNC_PEERS_RESPONSE},
+		Peers:       serializedClients,
+	}, client)
 }
 
 func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncPeersResponseMessage, client model.Client) {
-	panic("unimplemented")
+	for _, peer := range syncPeersRespMsg.Peers {
+		controller.AddNewConnection(peer.HostName)
+	}
 }
 
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client model.Client) {

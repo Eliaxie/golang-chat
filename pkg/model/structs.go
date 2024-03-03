@@ -39,11 +39,11 @@ func (m BaseMessage) GetMessageType() MessageType {
 
 type SyncPeersMessage struct {
 	BaseMessage
-	PeerIDs []string `json:"peerIds"`
 }
 
 type SyncPeersResponseMessage struct {
-	// tbd
+	BaseMessage
+	Peers []SerializedClient `json:"peers"`
 }
 
 type GroupCreateMessage struct {
