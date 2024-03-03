@@ -111,7 +111,8 @@ type PendingMessage struct {
 
 // Model
 type Model struct {
-	Name               string // username-uniqueIdentifier
+	Proc_id            string // username-uniqueIdentifier
+	ServerPort         string
 	PendingClients     map[Client]bool
 	Clients            map[Client]bool
 	GroupsConsistency  map[Group]ConsistencyModel

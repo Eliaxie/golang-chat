@@ -3,9 +3,9 @@ package view
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
-	"runtime"
+	// "os"
+	// "os/exec"
+	// "runtime"
 	"strconv"
 	"strings"
 )
@@ -16,6 +16,7 @@ type MenuOption struct {
 }
 
 func DisplayMenu(options []MenuOption) {
+	MoveScreenUp()
 	for i, option := range options {
 		fmt.Printf("%d. %s\n", i+1, option.Option)
 	}
@@ -24,7 +25,6 @@ func DisplayMenu(options []MenuOption) {
 		choice := ReadStringTrimmed()
 
 		if choiceInt, err := strconv.Atoi(choice); err == nil && choiceInt > 0 && choiceInt <= len(options) {
-			MoveScreenUp()
 			options[choiceInt-1].Action()
 			break
 		} else {
@@ -47,17 +47,17 @@ func ReadInt() (int, error) {
 	return num, err
 }
 
-func ClearScreen() {
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "cls")
-	} else {
-		cmd = exec.Command("clear")
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Run()
-}
+// func ClearScreen() {
+// 	var cmd *exec.Cmd
+// 	if runtime.GOOS == "windows" {
+// 		cmd = exec.Command("cmd", "/c", "cls")
+// 	} else {
+// 		cmd = exec.Command("clear")
+// 	}
+// 	cmd.Stdout = os.Stdout
+// 	cmd.Run()
+// }
 
 func MoveScreenUp() {
-	fmt.Print("\033[H\033[2J")
+	// fmt.Print("\033[H\033[2J")
 }

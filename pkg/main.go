@@ -16,12 +16,13 @@ func main() {
 
 	// initialize model
 	globModel = &model.Model{
-		Name:               "",
+		Proc_id:            "",
 		PendingClients:     make(map[model.Client]bool),
 		Clients:            make(map[model.Client]bool),
 		GroupsBuffers:      make(map[model.Group][]model.PendingMessage),
 		Groups:             make(map[model.Group][]model.Client),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
+		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
 	}
 
 	_controller := controller.Controller{Model: globModel}

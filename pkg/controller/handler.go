@@ -2,7 +2,6 @@ package controller
 
 import (
 	"golang-chat/pkg/model"
-	"log"
 )
 
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client model.Client) {
@@ -13,7 +12,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
-		ClientID:    globModel.Name,
+		ClientID:    globModel.Proc_id,
 	}, client)
 }
 
@@ -53,8 +52,14 @@ func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncP
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client model.Client) {
 	var _clients []model.Client
 	for _, client := range groupCreateMsg.Clients {
+		// remove self from the list of clients
+		if c.Model.Proc_id == client.Proc_id {
+			continue
+		}
 		_clients = append(_clients, c.AddNewConnection(client.HostName))
 	}
+	// add original client to the list of clients
+	_clients = append(_clients, client)
 
 	c.Model.Groups[groupCreateMsg.Group] = _clients
 	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
@@ -63,7 +68,6 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client model.Client) {
-	log.Println("Received text message:", textMsg.Content)
 	c.Model.GroupsBuffers[textMsg.Group] =
 		append(c.Model.GroupsBuffers[textMsg.Group], model.PendingMessage{Content: textMsg.Content, Client: client, VectorClock: textMsg.VectorClock})
 

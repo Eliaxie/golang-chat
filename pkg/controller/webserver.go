@@ -25,15 +25,15 @@ func (c *Controller) multicastMessage(message model.Message, clients []model.Cli
 	}
 }
 
-func (c *Controller) addNewConnectionSlave(serverAddress string) model.Client {
-	ws, err := websocket.Dial(serverAddress, "", "http://localhost")
+func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) model.Client {
+	ws, err := websocket.Dial(serverAddress, "ws", origin)
 	if err != nil {
 		log.Fatal(err)
 	}
 	client := model.NewClient(ws)
 	c.Model.PendingClients[client] = true
 
-	initializeClient(c.Model.Name, &client)
+	initializeClient(c.Model.Proc_id, &client)
 	go receiveLoop(ws, client)
 	return client
 }
