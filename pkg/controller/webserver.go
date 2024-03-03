@@ -32,7 +32,8 @@ func (c *Controller) addNewConnectionSlave(serverAddress string) model.Client {
 	}
 	client := model.NewClient(ws)
 	c.Model.PendingClients[client] = true
-	initializeClient(&client)
+
+	initializeClient(c.Model.Name, &client)
 	go receiveLoop(ws, client)
 	return client
 }
