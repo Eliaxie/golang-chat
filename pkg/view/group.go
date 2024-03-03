@@ -62,7 +62,7 @@ func displayOpenGroup() {
 
 func DisplayGroup(group model.Group) {
 	MoveScreenUp()
-	color.Green("Entering room %s ( type '/exit' to leave the room )", group)
+	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
 	inputLoop(group)
 }
 
@@ -74,6 +74,18 @@ func inputLoop(group model.Group) {
 			DisplayMainMenu()
 			break
 		}
+		if value == "/list" {
+			DisplayGroupMembers(group)
+			continue
+		}
+
 		_controller.SendGroupMessage(value, group)
+	}
+}
+
+func DisplayGroupMembers(group model.Group) {
+	color.Green("Members of group %s", group)
+	for _, client := range _controller.Model.Groups[group] {
+		color.White("- %s", client.Proc_id)
 	}
 }
