@@ -41,7 +41,7 @@ func displayAddClientsToGroup(groupName string) {
 	menuOptions = append(menuOptions, MenuOption{"Back", func() {
 		_controller.CreateGroup(groupName, clientsToAdd)
 		log.Println("Group " + groupName + " created successfully")
-		DisplayMainMenu()
+		displayMainMenu()
 	}})
 
 	DisplayMenu(menuOptions)
@@ -54,13 +54,13 @@ func displayOpenGroup() {
 	// list of groups as MenuOptions
 	var groups []MenuOption
 	for group := range _controller.Model.Groups {
-		groups = append(groups, MenuOption{group.Name, func() { DisplayGroup(group) }})
+		groups = append(groups, MenuOption{group.Name, func() { displayGroup(group) }})
 	}
-	groups = append(groups, MenuOption{"Back", DisplayMainMenu})
+	groups = append(groups, MenuOption{"Back", displayMainMenu})
 	DisplayMenu(groups)
 }
 
-func DisplayGroup(group model.Group) {
+func displayGroup(group model.Group) {
 	MoveScreenUp()
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
 	inputLoop(group)
@@ -71,11 +71,11 @@ func inputLoop(group model.Group) {
 	for {
 		value := ReadStringTrimmed()
 		if value == "/exit" {
-			DisplayMainMenu()
+			displayMainMenu()
 			break
 		}
 		if value == "/list" {
-			DisplayGroupMembers(group)
+			displayGroupMembers(group)
 			continue
 		}
 
@@ -83,7 +83,7 @@ func inputLoop(group model.Group) {
 	}
 }
 
-func DisplayGroupMembers(group model.Group) {
+func displayGroupMembers(group model.Group) {
 	color.Green("Members of group %s", group)
 	for _, client := range _controller.Model.Groups[group] {
 		color.White("- %s", client.Proc_id)

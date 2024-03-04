@@ -20,16 +20,16 @@ var _controller *controller.Controller
 func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
-	port := DisplayInsertPort()
+	port := displayInsertPort()
 	_controller.StartServer(strconv.Itoa(port))
 	log.Println("Server started on port ", port)
-	username := DisplayInsertUsername()
+	username := displayInsertUsername()
 	_controller.Model.Proc_id = username + "-" + _controller.GenerateUniqueID()
 	log.Println("Username: ", _controller.Model.Proc_id)
-	DisplayMainMenu()
+	displayMainMenu()
 }
 
-func DisplayInsertPort() int {
+func displayInsertPort() int {
 	fmt.Print("Enter port number to start the server on (default ", model.DEFAULT_PORT, "): ")
 	val, err := ReadInt()
 	if err != nil {
@@ -38,38 +38,38 @@ func DisplayInsertPort() int {
 	return val
 }
 
-func DisplayInsertUsername() string {
+func displayInsertUsername() string {
 	MoveScreenUp()
 	fmt.Print("Enter username: ")
 	return ReadStringTrimmed()
 }
 
 // Function to display the main menu
-func DisplayMainMenu() {
+func displayMainMenu() {
 
 	DisplayMenu([]MenuOption{
-		{"Add new connections", DisplayAddNewConnectionsMenu},
-		{"Create new Group", DisplayCreateNewGroup},
+		{"Add new connections", displayAddNewConnectionsMenu},
+		{"Create new Group", displayCreateNewGroup},
 		{"Open Group", displayOpenGroup},
 	})
 }
 
-func DisplayAddNewConnectionsMenu() {
+func displayAddNewConnectionsMenu() {
 	DisplayMenu([]MenuOption{
-		{"Add Connection From File", DisplayAddConnectionFromFile},
-		{"Add Connection Manually", DisplayAddConnectionManually},
-		{"Back", DisplayMainMenu},
+		{"Add Connection From File", displayAddConnectionFromFile},
+		{"Add Connection Manually", displayAddConnectionManually},
+		{"Back", displayMainMenu},
 	})
 }
 
-func DisplayAddConnectionFromFile() {
+func displayAddConnectionFromFile() {
 	MoveScreenUp()
 	fmt.Print("Enter the file path (\"q\" to go back): ")
 	var connections []string
 	for {
 		filePath := ReadStringTrimmed()
 		if filePath == "q" {
-			DisplayAddNewConnectionsMenu()
+			displayAddNewConnectionsMenu()
 			break
 		}
 
@@ -84,16 +84,16 @@ func DisplayAddConnectionFromFile() {
 	}
 	log.Println("Connections added successfully")
 	log.Print(connections)
-	DisplayMainMenu()
+	displayMainMenu()
 }
 
-func DisplayAddConnectionManually() {
+func displayAddConnectionManually() {
 	for {
 		MoveScreenUp()
 		fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
 		connection := ReadStringTrimmed()
 		if connection == "q" {
-			DisplayAddNewConnectionsMenu()
+			displayAddNewConnectionsMenu()
 			break
 		}
 		if connection == "" {
@@ -113,10 +113,10 @@ func DisplayAddConnectionManually() {
 			break
 		}
 	}
-	DisplayMainMenu()
+	displayMainMenu()
 }
 
-func DisplayCreateNewGroup() {
+func displayCreateNewGroup() {
 	MoveScreenUp()
 	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
