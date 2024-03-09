@@ -3,12 +3,14 @@ package view
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
+	log "github.com/sirupsen/logrus"
+
 	"golang-chat/pkg/controller"
 	"golang-chat/pkg/model"
+	"golang-chat/pkg/notify"
 	"golang-chat/pkg/utils"
 
 	"github.com/fatih/color"
@@ -16,16 +18,18 @@ import (
 
 var reader = bufio.NewReader(os.Stdin)
 var _controller *controller.Controller
+var _notifier *notify.Notifier
 
 func Start(c *controller.Controller) {
 	_controller = c
+	_notifier = c.Notifier
 	color.Green("Welcome to the chat app")
 	port := displayInsertPort()
 	_controller.StartServer(strconv.Itoa(port))
-	log.Println("Server started on port ", port)
+	log.Info("Server started on port ", port)
 	username := displayInsertUsername()
 	_controller.Model.Proc_id = username + "-" + _controller.GenerateUniqueID()
-	log.Println("Username: ", _controller.Model.Proc_id)
+	log.Info("Username: ", _controller.Model.Proc_id)
 	displayMainMenu()
 }
 
@@ -76,14 +80,14 @@ func displayAddConnectionFromFile() {
 		// call the function to add the connections from the file
 		var err error
 		connections, err = utils.ReadConnectionsFromFile(filePath)
-		if err == nil {
+		if err != nil {
 			_controller.AddNewConnections(connections)
 			break
 		}
 		fmt.Println("Error while trying to read the file. Please try again. (\"q\" to go back)")
 	}
-	log.Println("Connections added successfully")
-	log.Print(connections)
+	log.Info("Connections added successfully")
+	log.Debug(connections)
 	displayMainMenu()
 }
 
@@ -101,7 +105,7 @@ func displayAddConnectionManually() {
 		}
 
 		// call the function to add the connection
-		log.Print(connection)
+		log.Debug(connection)
 		pendingClient := _controller.AddNewConnection(connection)
 		_controller.WaitForConnection(pendingClient)
 		color.Green("Connected")
@@ -121,4 +125,8 @@ func displayCreateNewGroup() {
 	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
 	displayAddClientsToGroup(groupName)
+}
+
+func UpdateGroup(group model.Group) {
+	println("View notified")
 }

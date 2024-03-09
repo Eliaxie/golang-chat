@@ -53,11 +53,16 @@ type GroupCreateMessage struct {
 	Clients          []SerializedClient `json:"clients"`
 }
 
+type UniqueMessage struct {
+	Text string `json:"content"`
+	UUID string `json:"uuid"`
+}
+
 type TextMessage struct {
 	BaseMessage
-	Content     string      `json:"content"`
-	Group       Group       `json:"group"`
-	VectorClock VectorClock `json:"vectorClock"`
+	Content     UniqueMessage `json:"content"`
+	Group       Group         `json:"group"`
+	VectorClock VectorClock   `json:"vectorClock"`
 }
 
 type ConnectionInitMessage struct {
@@ -104,9 +109,13 @@ type VectorClock struct {
 }
 
 type PendingMessage struct {
-	Content     string
+	Content     UniqueMessage
 	Client      Client
 	VectorClock VectorClock
+}
+
+type StableMessages struct {
+	Content UniqueMessage
 }
 
 // Model
@@ -117,7 +126,8 @@ type Model struct {
 	Clients            map[Client]bool
 	GroupsConsistency  map[Group]ConsistencyModel
 	Groups             map[Group][]Client
-	GroupsBuffers      map[Group][]PendingMessage
+	PendingMessages    map[Group][]PendingMessage
+	StableMessages     map[Group][]StableMessages
 	GroupsVectorClocks map[Group]VectorClock
 }
 

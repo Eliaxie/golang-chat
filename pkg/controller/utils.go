@@ -1,9 +1,11 @@
 package controller
 
 import (
-	"crypto/rand"
+	"crypto/sha1"
 	"encoding/hex"
 	"golang-chat/pkg/model"
+
+	"github.com/denisbrodbeck/machineid"
 )
 
 func initializeClient(proc_id string, client *model.Client) {
@@ -17,7 +19,12 @@ func initializeClient(proc_id string, client *model.Client) {
 }
 
 func (c *Controller) GenerateUniqueID() string {
-	b := make([]byte, 16) // generate 128-bit (16-byte) ID
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	b, err := machineid.ID()
+	if err != nil {
+		b = "default"
+	}
+	hasher := sha1.New()
+	hasher.Write([]byte(b))
+	// hash b
+	return hex.EncodeToString(hasher.Sum(nil))
 }

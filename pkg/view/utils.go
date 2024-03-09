@@ -2,7 +2,9 @@ package view
 
 import (
 	"fmt"
-	"log"
+
+	log "github.com/sirupsen/logrus"
+
 	// "os"
 	// "os/exec"
 	// "runtime"

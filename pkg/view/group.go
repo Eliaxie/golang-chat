@@ -2,7 +2,8 @@ package view
 
 import (
 	"golang-chat/pkg/model"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/fatih/color"
 )
@@ -34,13 +35,13 @@ func displayAddClientsToGroup(groupName string) {
 
 		menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
 			clientsToAdd = append(clientsToAdd, client)
-			log.Println("Client " + client.Proc_id + " added to group " + groupName)
+			log.Info("Client " + client.Proc_id + " added to group " + groupName)
 			displayAddClientsToGroup(groupName)
 		}})
 	}
 	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupName, clientsToAdd)
-		log.Println("Group " + groupName + " created successfully")
+		_controller.CreateGroup(groupName, model.FIFO, clientsToAdd)
+		log.Info("Group " + groupName + " created successfully")
 		displayMainMenu()
 	}})
 
@@ -62,8 +63,10 @@ func displayOpenGroup() {
 
 func displayGroup(group model.Group) {
 	MoveScreenUp()
+	_notifier.Listen(group, UpdateGroup)
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
 	inputLoop(group)
+	_notifier.Remove(group)
 }
 
 // function that loops and waits for input from the user

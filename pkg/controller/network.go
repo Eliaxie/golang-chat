@@ -3,13 +3,16 @@ package controller
 import (
 	"encoding/json"
 	"golang-chat/pkg/model"
-	"log"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/google/uuid"
 )
 
 // Only send function not checking if client is in the model
 func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
 	data, _ := json.Marshal(message)
-	log.Print(string(data))
+	log.Debug(string(data))
 	sendMessageSlave(client.Ws, data)
 }
 
@@ -18,7 +21,7 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 		return
 	}
 	data, _ := json.Marshal(message)
-	log.Print(string(data))
+	log.Debug(string(data))
 	sendMessageSlave(client.Ws, data)
 }
 
@@ -28,7 +31,7 @@ func (c *Controller) SendTextMessage(text string, client model.Client) {
 	}
 	msg := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     text, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
+		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
 	data, _ := json.Marshal(msg)
 	println("Sending message:", string(data))
 	sendMessageSlave(client.Ws, data)
@@ -43,5 +46,5 @@ func (c *Controller) BroadcastMessage(text string) {
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	c.multicastMessage(model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     text, Group: group, VectorClock: model.VectorClock{}}, c.Model.Groups[group])
+		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: model.VectorClock{}}, c.Model.Groups[group])
 }

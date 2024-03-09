@@ -29,4 +29,18 @@ This project is a chat application built with Go. It uses a client-server archit
 To run the server:
 
 ```sh
-go run pkg/main.go
+go run main.go
+```
+
+## Logs
+
+You can customize the log level at startup using the `-v` flag. The number of `v` characters indicates the log level, as follows:
+
+- `No flag`:  PanicLevel
+- `-v`: FatalLevel
+- `-vv`: ErrorLevel
+- `-vvv`: WarnLevel
+- `-vvvv`: InfoLevel
+- `-vvvvv`: DebugLevel
+- `-vvvvvv`: TraceLevel
+

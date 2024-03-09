@@ -63,13 +63,13 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 
 	c.Model.Groups[groupCreateMsg.Group] = _clients
 	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
-	c.Model.GroupsBuffers[groupCreateMsg.Group] = []model.PendingMessage{}
+	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client model.Client) {
-	c.Model.GroupsBuffers[textMsg.Group] =
-		append(c.Model.GroupsBuffers[textMsg.Group], model.PendingMessage{Content: textMsg.Content, Client: client, VectorClock: textMsg.VectorClock})
+	c.Model.PendingMessages[textMsg.Group] =
+		append(c.Model.PendingMessages[textMsg.Group], model.PendingMessage{Content: textMsg.Content, Client: client, VectorClock: textMsg.VectorClock})
 
 	c.tryAcceptMessage(textMsg, client)
 }

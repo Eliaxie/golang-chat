@@ -3,8 +3,9 @@ package controller
 import (
 	"encoding/json"
 	"golang-chat/pkg/model"
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"golang.org/x/net/websocket"
 )
@@ -39,7 +40,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) 
 }
 
 func sendMessageSlave(ws *websocket.Conn, msg []byte) error {
-	log.Println("Slave: Sending message:", string(msg))
+	log.Debug("Slave: Sending message:", string(msg))
 	return websocket.Message.Send(ws, msg)
 }
 
@@ -62,16 +63,16 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		var data []byte
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
-			log.Println(err)
+			log.Error(err)
 			delete(globModel.Clients, client)
 			break
 		}
 
-		log.Println("Handled data: ", string(data))
+		log.Info("Handled data: ", string(data))
 
 		var msg model.BaseMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Println("Error deserializing message:", err)
+			log.Error("Error deserializing message:", err)
 			continue
 		}
 
@@ -80,7 +81,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.TEXT:
 			var textMsg model.TextMessage
 			if err := json.Unmarshal(data, &textMsg); err != nil {
-				log.Println("Error parsing TextMessage:", err)
+				log.Error("Error parsing TextMessage:", err)
 			} else {
 				controller.HandleTextMessage(textMsg, client)
 			}
@@ -88,7 +89,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.CONN_INIT:
 			var connInitMsg model.ConnectionInitMessage
 			if err := json.Unmarshal(data, &connInitMsg); err != nil {
-				log.Println("Error parsing ConnectionInitMessage:", err)
+				log.Error("Error parsing ConnectionInitMessage:", err)
 			} else {
 				controller.HandleConnectionInitMessage(connInitMsg, client)
 			}
@@ -96,7 +97,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.CONN_INIT_RESPONSE:
 			var connInitRespMsg model.ConnectionInitResponseMessage
 			if err := json.Unmarshal(data, &connInitRespMsg); err != nil {
-				log.Println("Error parsing ConnectionInitResponseMessage:", err)
+				log.Error("Error parsing ConnectionInitResponseMessage:", err)
 			} else {
 				controller.HandleConnectionInitResponseMessage(connInitRespMsg, client)
 			}
@@ -104,7 +105,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.SYNC_PEERS:
 			var syncPeersMsg model.SyncPeersMessage
 			if err := json.Unmarshal(data, &syncPeersMsg); err != nil {
-				log.Println("Error parsing SyncPeersMessage:", err)
+				log.Error("Error parsing SyncPeersMessage:", err)
 			} else {
 				controller.HandleSyncPeersMessage(syncPeersMsg, client)
 			}
@@ -112,7 +113,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.GROUP_CREATE:
 			var groupCreateMsg model.GroupCreateMessage
 			if err := json.Unmarshal(data, &groupCreateMsg); err != nil {
-				log.Println("Error parsing GroupCreateMessage:", err)
+				log.Error("Error parsing GroupCreateMessage:", err)
 			} else {
 				controller.HandleGroupCreateMessage(groupCreateMsg, client)
 			}
@@ -120,7 +121,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.CONN_RESTORE:
 			var connRestoreMsg model.ConnectionRestoreMessage
 			if err := json.Unmarshal(data, &connRestoreMsg); err != nil {
-				log.Println("Error parsing ConnectionRestoreMessage:", err)
+				log.Error("Error parsing ConnectionRestoreMessage:", err)
 			} else {
 				controller.HandleConnectionRestoreMessage(connRestoreMsg, client)
 			}
@@ -128,7 +129,7 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.SYNC_PEERS_RESPONSE:
 			var syncPeersRespMsg model.SyncPeersResponseMessage
 			if err := json.Unmarshal(data, &syncPeersRespMsg); err != nil {
-				log.Println("Error parsing SyncPeersResponseMessage:", err)
+				log.Error("Error parsing SyncPeersResponseMessage:", err)
 			} else {
 				controller.HandleSyncPeersResponseMessage(syncPeersRespMsg, client)
 			}
@@ -136,13 +137,13 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		case model.CONN_RESTORE_RESPONSE:
 			var connRestoreRespMsg model.ConnectionRestoreResponseMessage
 			if err := json.Unmarshal(data, &connRestoreRespMsg); err != nil {
-				log.Println("Error parsing ConnectionRestoreResponseMessage:", err)
+				log.Error("Error parsing ConnectionRestoreResponseMessage:", err)
 			} else {
 				controller.HandleConnectionRestoreResponseMessage(connRestoreRespMsg, client)
 			}
 
 		default:
-			log.Println("Unknown message type:", msg.GetMessageType())
+			log.Error("Unknown message type:", msg.GetMessageType())
 		}
 	}
 }
