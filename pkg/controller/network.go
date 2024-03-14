@@ -44,7 +44,10 @@ func (c *Controller) BroadcastMessage(text string) {
 }
 
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
-	c.multicastMessage(model.TextMessage{
+	textMessage := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: model.VectorClock{}}, c.Model.Groups[group])
+		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: model.VectorClock{}}
+
+	c.multicastMessage(textMessage, c.Model.Groups[group])
+	c.tryAcceptMessage(textMessage, model.Client{})
 }
