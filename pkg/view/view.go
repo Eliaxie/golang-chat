@@ -26,10 +26,10 @@ func Start(c *controller.Controller) {
 	color.Green("Welcome to the chat app")
 	port := displayInsertPort()
 	_controller.StartServer(strconv.Itoa(port))
-	log.Info("Server started on port ", port)
+	log.Infoln("Server started on port ", port)
 	username := displayInsertUsername()
 	_controller.Model.Proc_id = username + "-" + _controller.GenerateUniqueID()
-	log.Info("Username: ", _controller.Model.Proc_id)
+	log.Infoln("Username: ", _controller.Model.Proc_id)
 	displayMainMenu()
 }
 
@@ -86,7 +86,7 @@ func displayAddConnectionFromFile() {
 		}
 		fmt.Println("Error while trying to read the file. Please try again. (\"q\" to go back)")
 	}
-	log.Info("Connections added successfully")
+	log.Infoln("Connections added successfully")
 	log.Debug(connections)
 	displayMainMenu()
 }
@@ -120,13 +120,4 @@ func displayAddConnectionManually() {
 	displayMainMenu()
 }
 
-func displayCreateNewGroup() {
-	MoveScreenUp()
-	fmt.Print("Enter the group name: ")
-	groupName := ReadStringTrimmed()
-	displayAddClientsToGroup(groupName)
-}
 
-func UpdateGroup(group model.Group) {
-	println("View notified")
-}

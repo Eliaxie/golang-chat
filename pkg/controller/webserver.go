@@ -63,12 +63,12 @@ func receiveLoop(ws *websocket.Conn, client model.Client) {
 		var data []byte
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
-			log.Error(err)
+			log.Errorln(err)
 			delete(globModel.Clients, client)
 			break
 		}
 
-		log.Info("Handled data: ", string(data))
+		log.Infoln("Handled data: ", string(data))
 
 		var msg model.BaseMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
