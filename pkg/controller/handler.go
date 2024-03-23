@@ -2,6 +2,7 @@ package controller
 
 import (
 	"golang-chat/pkg/model"
+	"sync"
 )
 
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client model.Client) {
@@ -63,14 +64,12 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 
 	c.Model.Groups[groupCreateMsg.Group] = _clients
 	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
+	c.Model.GroupsLocks[groupCreateMsg.Group] = &sync.Mutex{}
 	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
 	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client model.Client) {
-	c.Model.PendingMessages[textMsg.Group] =
-		append(c.Model.PendingMessages[textMsg.Group], model.PendingMessage{Content: textMsg.Content, Client: client, VectorClock: textMsg.VectorClock})
-
 	c.tryAcceptMessage(textMsg, client)
 }

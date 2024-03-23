@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/notify"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Controller struct {
-	Model    *model.Model
-	Notifier *notify.Notifier
+	Model        *model.Model
+	Notifier     *notify.Notifier
 }
 
 func (c *Controller) AddNewConnection(connection string) model.Client {
@@ -32,28 +33,35 @@ func (c *Controller) StartServer(port string) {
 // Tries to accept the received message. Returns true if the buffer is empty, false otherwise
 // If accepted the message is moved from the PendingBuffer to the StableBuffer
 func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Client) bool {
+	
+	c.Model.GroupsLocks[message.Group].Lock()
+	c.Model.PendingMessages[message.Group] =
+		append(c.Model.PendingMessages[message.Group], model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock})
+
 	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
 	log.Debug("Buffer Pending: ", string(_logP))
 	log.Debug("Buffer Stable: ", string(_logS))
-	pendingMessages := c.Model.PendingMessages[message.Group]
-	stableMessages := c.Model.StableMessages[message.Group]
-	callView := false
+
+	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
 	case model.CAUSAL:
-		callView = c.tryAcceptCasualMessages(&pendingMessages, &stableMessages, message, client)
+		newMessage = c.tryAcceptCasualMessages(message, client)
 	case model.GLOBAL:
-		callView = c.tryAcceptGlobalMessages(&pendingMessages, &stableMessages, message, client)
+		newMessage = c.tryAcceptGlobalMessages(message, client)
 	case model.LINEARIZABLE:
-		callView = c.tryAcceptLinearizableMessages(&pendingMessages, &stableMessages, message, client)
+		newMessage = c.tryAcceptLinearizableMessages(message, client)
 	case model.FIFO:
-		callView = c.tryAcceptFIFOMessages(&pendingMessages, &stableMessages, message, client)
+		newMessage = c.tryAcceptFIFOMessages(message, client)
 	default:
 		log.Panic("Unknown consistency model")
 	}
-	if callView {
+
+	if newMessage {
 		c.Notifier.Notify(message.Group)
 	}
+	c.Model.GroupsLocks[message.Group].Unlock()
+
 	_logP, _ = json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ = json.Marshal(c.Model.StableMessages[message.Group])
 	log.Debug("Buffer Pending: ", string(_logP))
@@ -66,6 +74,7 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	group := model.Group{Name: groupName, Madeby: c.Model.Proc_id}
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
+	c.Model.GroupsLocks[group] = &sync.Mutex{}
 
 	// Send the group create message to all the clients
 	var serializedClients []model.SerializedClient

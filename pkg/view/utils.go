@@ -2,6 +2,9 @@ package view
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,17 +52,21 @@ func ReadInt() (int, error) {
 	return num, err
 }
 
-// func ClearScreen() {
-// 	var cmd *exec.Cmd
-// 	if runtime.GOOS == "windows" {
-// 		cmd = exec.Command("cmd", "/c", "cls")
-// 	} else {
-// 		cmd = exec.Command("clear")
-// 	}
-// 	cmd.Stdout = os.Stdout
-// 	cmd.Run()
-// }
+func ClearScreen() {
+	if log.StandardLogger().Level > log.PanicLevel {
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/c", "cls")
+		} else {
+			cmd = exec.Command("clear")
+		}
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
+}
 
 func MoveScreenUp() {
-	// fmt.Print("\033[H\033[2J")
+	if log.StandardLogger().Level > log.PanicLevel {
+		fmt.Println("\033[1A")
+	}
 }

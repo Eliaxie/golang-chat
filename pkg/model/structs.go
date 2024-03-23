@@ -1,6 +1,10 @@
 package model
 
-import "golang.org/x/net/websocket"
+import (
+	"sync"
+
+	"golang.org/x/net/websocket"
+)
 
 type ConsistencyModel int
 
@@ -129,6 +133,7 @@ type Model struct {
 	PendingMessages    map[Group][]PendingMessage
 	StableMessages     map[Group][]StableMessages
 	GroupsVectorClocks map[Group]VectorClock
+	GroupsLocks 			 map[Group]*sync.Mutex
 }
 
 const (

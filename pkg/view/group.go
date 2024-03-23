@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"golang-chat/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -10,9 +11,53 @@ import (
 
 var clientsToAdd []model.Client
 
-func displayAddClientsToGroup(groupName string) {
+var currentMessage int
+
+type GoupCreationInfo struct {
+	GroupName        string
+	ConsistencyModel model.ConsistencyModel
+}
+
+func displayCreateNewGroup() {
 	MoveScreenUp()
-	color.Green("Add clients to group " + groupName)
+	fmt.Print("Enter the group name: ")
+	groupName := ReadStringTrimmed()
+	displayChooseConsistency(GoupCreationInfo{GroupName: groupName})
+}
+
+func displayChooseConsistency(groupInfo GoupCreationInfo) {
+	MoveScreenUp()
+	color.Green("Choose consistency model for group:")
+
+	selectModel := func(consistencyModel *model.ConsistencyModel, selectedModel model.ConsistencyModel) {
+		*consistencyModel = selectedModel
+	}
+
+	DisplayMenu([]MenuOption{
+		{"FIFO", func() {
+			selectModel(&groupInfo.ConsistencyModel, model.FIFO)
+			displayAddClientsToGroup(groupInfo)
+		}},
+		{"CAUSAL", func() {
+			selectModel(&groupInfo.ConsistencyModel, model.CAUSAL)
+			displayAddClientsToGroup(groupInfo)
+		}},
+		{"GLOBAL", func() {
+			selectModel(&groupInfo.ConsistencyModel, model.GLOBAL)
+			displayAddClientsToGroup(groupInfo)
+		}},
+		{"LINEARIZABLE", func() {
+			selectModel(&groupInfo.ConsistencyModel, model.LINEARIZABLE)
+			displayAddClientsToGroup(groupInfo)
+		}},
+		{"Back", displayMainMenu},
+	})
+
+}
+
+func displayAddClientsToGroup(groupInfo GoupCreationInfo) {
+	MoveScreenUp()
+	color.Green("Add clients to group " + groupInfo.GroupName)
 
 	// add a menu option for each client
 	var menuOptions []MenuOption
@@ -35,16 +80,16 @@ func displayAddClientsToGroup(groupName string) {
 
 		menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
 			clientsToAdd = append(clientsToAdd, client)
-			log.Info("Client " + client.Proc_id + " added to group " + groupName)
-			displayAddClientsToGroup(groupName)
+			log.Infoln("Client " + client.Proc_id + " added to group " + groupInfo.GroupName)
+			displayAddClientsToGroup(groupInfo)
 		}})
 	}
+	//add done option
 	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupName, model.FIFO, clientsToAdd)
-		log.Info("Group " + groupName + " created successfully")
+		_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
+		log.Infoln("Group " + groupInfo.GroupName + " created successfully")
 		displayMainMenu()
 	}})
-
 	DisplayMenu(menuOptions)
 }
 
@@ -63,10 +108,13 @@ func displayOpenGroup() {
 
 func displayGroup(group model.Group) {
 	MoveScreenUp()
-	_notifier.Listen(group, UpdateGroup)
+	color.Green("Previous messages in group:")
+	for _, message := range _controller.Model.StableMessages[group] {
+		color.Yellow(message.Content.Text)
+	}
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
+	_notifier.Listen(group, UpdateGroup)
 	inputLoop(group)
-	_notifier.Remove(group)
 }
 
 // function that loops and waits for input from the user
@@ -74,6 +122,7 @@ func inputLoop(group model.Group) {
 	for {
 		value := ReadStringTrimmed()
 		if value == "/exit" {
+			_notifier.Remove(group)
 			displayMainMenu()
 			break
 		}
@@ -90,5 +139,14 @@ func displayGroupMembers(group model.Group) {
 	color.Green("Members of group %s", group)
 	for _, client := range _controller.Model.Groups[group] {
 		color.White("- %s", client.Proc_id)
+	}
+}
+
+func UpdateGroup(group model.Group) {
+	log.Debugln("Updating group" + group.Name + "made by " + group.Madeby)
+	var stableMessages = _controller.Model.StableMessages[group]
+	for i := currentMessage; i < len(stableMessages); i++ {
+		color.Yellow(stableMessages[i].Content.Text)
+		currentMessage++
 	}
 }

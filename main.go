@@ -7,6 +7,7 @@ import (
 	"golang-chat/pkg/utils"
 	"os"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -46,6 +47,7 @@ func main() {
 		Groups:             make(map[model.Group][]model.Client),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
+		GroupsLocks:        make(map[model.Group]*sync.Mutex),
 	}
 
 	// initialize notifier
@@ -53,6 +55,8 @@ func main() {
 
 	_controller := controller.Controller{Model: globModel, Notifier: notifier}
 
+
+	// starts view
 	view.Start(&_controller)
 
 }
