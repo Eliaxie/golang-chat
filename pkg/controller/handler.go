@@ -17,9 +17,9 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 }
 
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client model.Client) {
-	delete(controller.Model.PendingClients, client)
 	client.Proc_id = connInitRespMsg.ClientID
 	controller.Model.Clients[client] = true
+	delete(controller.Model.PendingClients, client)
 }
 
 func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.ConnectionRestoreMessage, client model.Client) {
@@ -64,6 +64,7 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	c.Model.Groups[groupCreateMsg.Group] = _clients
 	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
 	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
+	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
 }
 

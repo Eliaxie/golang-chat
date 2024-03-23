@@ -17,6 +17,7 @@ import (
 
 func main() {
 
+	// initialize logger level
 	level := 0
 	if len(os.Args) > 1 {
 		if strings.Contains(os.Args[1], "-v") {
@@ -27,11 +28,21 @@ func main() {
 
 	// initialize model
 	globModel := &model.Model{
-		Proc_id:            "",
-		PendingClients:     make(map[model.Client]bool),
-		Clients:            make(map[model.Client]bool),
-		PendingMessages:    make(map[model.Group][]model.PendingMessage),
-		StableMessages:     make(map[model.Group][]model.StableMessages),
+		// name of yourself
+		Proc_id: "",
+
+		// clients before the handshake
+		PendingClients: make(map[model.Client]bool),
+
+		// clients after the handshake
+		Clients: make(map[model.Client]bool),
+
+		// messages that have been received or sent but not yet trasmitted to the app level
+		PendingMessages: make(map[model.Group][]model.PendingMessage),
+		// messages shown to the users
+		StableMessages: make(map[model.Group][]model.StableMessages),
+
+		// groups
 		Groups:             make(map[model.Group][]model.Client),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),

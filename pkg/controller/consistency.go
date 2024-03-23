@@ -4,6 +4,11 @@ import "golang-chat/pkg/model"
 
 func (c *Controller) tryAcceptCasualMessages(pendingMessages *[]model.PendingMessage, stableMessages *[]model.StableMessages, message model.TextMessage, client model.Client) bool {
 
+	// check vector clock
+	// see if that vector clock UNLOCKS which message
+
+	// loop on every pending message
+	// to accept it give the vector clock
 	return false
 }
 
