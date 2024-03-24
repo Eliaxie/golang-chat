@@ -10,7 +10,6 @@ import (
 
 	"golang-chat/pkg/controller"
 	"golang-chat/pkg/model"
-	"golang-chat/pkg/notify"
 	"golang-chat/pkg/utils"
 
 	"github.com/fatih/color"
@@ -18,11 +17,9 @@ import (
 
 var reader = bufio.NewReader(os.Stdin)
 var _controller *controller.Controller
-var _notifier *notify.Notifier
 
 func Start(c *controller.Controller) {
 	_controller = c
-	_notifier = c.Notifier
 	color.Green("Welcome to the chat app")
 	port := displayInsertPort()
 	_controller.StartServer(strconv.Itoa(port))

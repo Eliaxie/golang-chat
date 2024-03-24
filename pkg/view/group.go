@@ -86,7 +86,7 @@ func displayAddClientsToGroup(groupInfo GoupCreationInfo) {
 	}
 	//add done option
 	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
+		_controller.CreateGroup(groupInfo.GroupName, model.CAUSAL, clientsToAdd)
 		log.Infoln("Group " + groupInfo.GroupName + " created successfully")
 		displayMainMenu()
 	}})
@@ -113,7 +113,7 @@ func displayGroup(group model.Group) {
 		color.Yellow(message.Content.Text)
 	}
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
-	_notifier.Listen(group, UpdateGroup)
+	_controller.Notifier.Listen(group, UpdateGroup)
 	inputLoop(group)
 }
 
@@ -122,7 +122,7 @@ func inputLoop(group model.Group) {
 	for {
 		value := ReadStringTrimmed()
 		if value == "/exit" {
-			_notifier.Remove(group)
+			_controller.Notifier.Remove(group)
 			displayMainMenu()
 			break
 		}

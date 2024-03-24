@@ -52,4 +52,5 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 
 	c.multicastMessage(textMessage, c.Model.Groups[group])
 	c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
+	c.Notifier.Notify(group)
 }

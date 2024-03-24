@@ -52,12 +52,17 @@ func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncP
 
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client *model.Client) {
 	var _clients []model.Client
-	for _, client := range groupCreateMsg.Clients {
+	for _, groupClients := range groupCreateMsg.Clients {
 		// remove self from the list of clients
-		if c.Model.Myself.Proc_id == client.Proc_id {
+		if c.Model.Myself.Proc_id == groupClients.Proc_id {
 			continue
 		}
-		_clients = append(_clients, c.AddNewConnection(client.HostName))
+		if groupClients.Proc_id == client.Proc_id {
+			continue
+		}
+
+		_clients = append(_clients, c.AddNewConnection(groupClients.HostName))
+
 	}
 	// add original client to the list of clients
 	_clients = append(_clients, *client)
@@ -68,6 +73,9 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
 	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
+	for _, client := range _clients {
+		c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[client.Proc_id] = 0
+	}
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {

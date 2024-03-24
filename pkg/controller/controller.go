@@ -73,8 +73,13 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 func (c *Controller) CreateGroup(groupName string, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
 	// Add the group to the model
 	group := model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id}
+	clients = append(clients, c.Model.Myself)
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
+	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
+	for _, client := range clients {
+		c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
+	}
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
 
 	// Send the group create message to all the clients

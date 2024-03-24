@@ -20,7 +20,9 @@ func InitWebServer(port string, c *Controller) {
 func (c *Controller) multicastMessage(message model.Message, clients []model.Client) {
 	data, _ := json.Marshal(message)
 	for _, client := range clients {
-		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
+		if client != c.Model.Myself {
+			sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
+		}
 	}
 }
 
