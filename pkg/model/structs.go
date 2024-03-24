@@ -90,17 +90,13 @@ type ConnectionRestoreResponseMessage struct {
 }
 
 type Client struct {
-	Ws      *websocket.Conn
-	Proc_id string
+	Proc_id          string
+	ConnectionString string
 }
 
 type SerializedClient struct {
 	Proc_id  string `json:"proc_id"`
 	HostName string `json:"hostName"`
-}
-
-func NewClient(ws *websocket.Conn) Client {
-	return Client{ws, ""}
 }
 
 type Group struct {
@@ -109,6 +105,7 @@ type Group struct {
 }
 
 type VectorClock struct {
+	//Map proc_id to clock
 	Clock map[string]int `json:"clock"`
 }
 
@@ -124,16 +121,21 @@ type StableMessages struct {
 
 // Model
 type Model struct {
-	Proc_id            string // username-uniqueIdentifier
-	ServerPort         string
-	PendingClients     map[Client]bool
-	Clients            map[Client]bool
-	GroupsConsistency  map[Group]ConsistencyModel
+	Myself     Client
+	ServerPort string
+
+	// map client_endpoint -> ws
+	ClientWs map[string]*websocket.Conn
+	// map client_endpoint -> client (before client init)
+	PendingClients  map[string]*Client
+	Clients         map[Client]bool
+	PendingMessages map[Group][]PendingMessage
+	StableMessages  map[Group][]StableMessages
+
 	Groups             map[Group][]Client
-	PendingMessages    map[Group][]PendingMessage
-	StableMessages     map[Group][]StableMessages
+	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
-	GroupsLocks 			 map[Group]*sync.Mutex
+	GroupsLocks        map[Group]*sync.Mutex
 }
 
 const (

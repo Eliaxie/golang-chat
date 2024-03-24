@@ -11,12 +11,12 @@ import (
 )
 
 type Controller struct {
-	Model        *model.Model
-	Notifier     *notify.Notifier
+	Model    *model.Model
+	Notifier *notify.Notifier
 }
 
 func (c *Controller) AddNewConnection(connection string) model.Client {
-	return c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection)
+	return *c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection)
 }
 
 func (c *Controller) AddNewConnections(connection []string) {
@@ -33,10 +33,11 @@ func (c *Controller) StartServer(port string) {
 // Tries to accept the received message. Returns true if the buffer is empty, false otherwise
 // If accepted the message is moved from the PendingBuffer to the StableBuffer
 func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Client) bool {
-	
+
 	c.Model.GroupsLocks[message.Group].Lock()
+	pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock}
 	c.Model.PendingMessages[message.Group] =
-		append(c.Model.PendingMessages[message.Group], model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock})
+		append(c.Model.PendingMessages[message.Group], pendingMessage)
 
 	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
@@ -46,7 +47,7 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
 	case model.CAUSAL:
-		newMessage = c.tryAcceptCasualMessages(message, client)
+		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:
 		newMessage = c.tryAcceptGlobalMessages(message, client)
 	case model.LINEARIZABLE:
@@ -71,7 +72,7 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 
 func (c *Controller) CreateGroup(groupName string, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
 	// Add the group to the model
-	group := model.Group{Name: groupName, Madeby: c.Model.Proc_id}
+	group := model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id}
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
@@ -81,12 +82,12 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	for _, client := range clients {
 		serializedClients = append(serializedClients,
 			model.SerializedClient{Proc_id: client.Proc_id,
-				HostName: client.Ws.RemoteAddr().String()})
+				HostName: client.ConnectionString})
 	}
 	c.multicastMessage(
 		model.GroupCreateMessage{
 			BaseMessage: model.BaseMessage{MessageType: model.GROUP_CREATE},
-			Group:       model.Group{Name: groupName, Madeby: globModel.Proc_id},
+			Group:       model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id},
 			Clients:     serializedClients}, clients)
 	return group
 }
@@ -94,7 +95,7 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 func (c *Controller) WaitForConnection(client model.Client) bool {
 	for {
 		// a client is no longer pending once it has been added to the clients list
-		_, ok := c.Model.PendingClients[client]
+		_, ok := c.Model.PendingClients[client.ConnectionString]
 		if !ok {
 			return true
 		}

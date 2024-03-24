@@ -28,8 +28,9 @@ func Start(c *controller.Controller) {
 	_controller.StartServer(strconv.Itoa(port))
 	log.Infoln("Server started on port ", port)
 	username := displayInsertUsername()
-	_controller.Model.Proc_id = username + "-" + _controller.GenerateUniqueID()
-	log.Infoln("Username: ", _controller.Model.Proc_id)
+	Proc_id := username + "-" + _controller.GenerateUniqueID()
+	_controller.Model.Myself = model.Client{Proc_id: Proc_id}
+	log.Infoln("Username: ", Proc_id)
 	displayMainMenu()
 }
 
@@ -119,5 +120,3 @@ func displayAddConnectionManually() {
 	}
 	displayMainMenu()
 }
-
-

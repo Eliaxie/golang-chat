@@ -10,11 +10,9 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-var globModel *model.Model
 var controller *Controller
 
 func InitWebServer(port string, c *Controller) {
-	globModel = c.Model
 	controller = c
 	go startServer(port)
 }
@@ -22,19 +20,20 @@ func InitWebServer(port string, c *Controller) {
 func (c *Controller) multicastMessage(message model.Message, clients []model.Client) {
 	data, _ := json.Marshal(message)
 	for _, client := range clients {
-		sendMessageSlave(client.Ws, data)
+		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
 	}
 }
 
-func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) model.Client {
+func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) *model.Client {
 	ws, err := websocket.Dial(serverAddress, "ws", origin)
 	if err != nil {
 		log.Fatal(err)
 	}
-	client := model.NewClient(ws)
-	c.Model.PendingClients[client] = true
+	client := &model.Client{Proc_id: "", ConnectionString: serverAddress}
+	c.Model.PendingClients[serverAddress] = client
+	c.Model.ClientWs[serverAddress] = ws
 
-	initializeClient(c.Model.Proc_id, &client)
+	initializeClient(c.Model.Myself.Proc_id, client)
 	go receiveLoop(ws, client)
 	return client
 }
@@ -52,19 +51,20 @@ func startServer(port string) {
 }
 
 func messageHandler(ws *websocket.Conn) {
-	client := model.NewClient(ws)
-	globModel.PendingClients[client] = true
+	client := &model.Client{Proc_id: "", ConnectionString: ws.Config().Location.String()}
+	controller.Model.PendingClients[ws.Config().Location.String()] = client
+	controller.Model.ClientWs[ws.Config().Location.String()] = ws
 
 	receiveLoop(ws, client)
 }
 
-func receiveLoop(ws *websocket.Conn, client model.Client) {
+func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			log.Errorln(err)
-			delete(globModel.Clients, client)
+			delete(controller.Model.Clients, *client)
 			break
 		}
 

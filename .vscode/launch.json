@@ -10,7 +10,8 @@
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "args": ["-vvvvv"]
         }        
     ]
 }

@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/websocket"
 
 	"golang-chat/pkg/view"
 )
@@ -28,13 +29,14 @@ func main() {
 	utils.LogInit(log.Level(level))
 
 	// initialize model
-	globModel := &model.Model{
+	model := &model.Model{
 		// name of yourself
-		Proc_id: "",
+		Myself: model.Client{},
 
+		// clients endpoint to ws
+		ClientWs: make(map[string]*websocket.Conn),
 		// clients before the handshake
-		PendingClients: make(map[model.Client]bool),
-
+		PendingClients: make(map[string]*model.Client),
 		// clients after the handshake
 		Clients: make(map[model.Client]bool),
 
@@ -45,16 +47,15 @@ func main() {
 
 		// groups
 		Groups:             make(map[model.Group][]model.Client),
-		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
+		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsLocks:        make(map[model.Group]*sync.Mutex),
 	}
 
 	// initialize notifier
 	notifier := notify.NewNotifier()
 
-	_controller := controller.Controller{Model: globModel, Notifier: notifier}
-
+	_controller := controller.Controller{Model: model, Notifier: notifier}
 
 	// starts view
 	view.Start(&_controller)

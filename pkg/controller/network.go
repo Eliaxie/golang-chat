@@ -13,7 +13,7 @@ import (
 func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
 	data, _ := json.Marshal(message)
 	log.Debug(string(data))
-	sendMessageSlave(client.Ws, data)
+	sendMessageSlave(controller.Model.ClientWs[client.ConnectionString], data)
 }
 
 func (c *Controller) SendMessage(message model.Message, client model.Client) {
@@ -22,11 +22,11 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 	}
 	data, _ := json.Marshal(message)
 	log.Debug(string(data))
-	sendMessageSlave(client.Ws, data)
+	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
 }
 
 func (c *Controller) SendTextMessage(text string, client model.Client) {
-	if !globModel.Clients[client] {
+	if !c.Model.Clients[client] {
 		return
 	}
 	msg := model.TextMessage{
@@ -34,7 +34,7 @@ func (c *Controller) SendTextMessage(text string, client model.Client) {
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
 	data, _ := json.Marshal(msg)
 	println("Sending message:", string(data))
-	sendMessageSlave(client.Ws, data)
+	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
 }
 
 func (c *Controller) BroadcastMessage(text string) {
@@ -44,10 +44,12 @@ func (c *Controller) BroadcastMessage(text string) {
 }
 
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
+	vectorClock := c.Model.GroupsVectorClocks[group]
+	vectorClock.Clock[c.Model.Myself.Proc_id]++
 	textMessage := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: model.VectorClock{}}
+		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
 	c.multicastMessage(textMessage, c.Model.Groups[group])
-	c.tryAcceptMessage(textMessage, model.Client{})
+	c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
 }
