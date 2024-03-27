@@ -13,6 +13,7 @@ func initializeClient(proc_id string, client *model.Client) {
 	connInitMsg := model.ConnectionInitMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT},
 		ClientID:    proc_id,
+		ServerPort:  controller.Model.ServerPort,
 	}
 	controller.SendInitMessage(connInitMsg, *client)
 

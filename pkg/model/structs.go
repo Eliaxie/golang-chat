@@ -71,7 +71,8 @@ type TextMessage struct {
 
 type ConnectionInitMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
+	ClientID   string `json:"clientId"`
+	ServerPort string `json:"serverPort"`
 }
 
 type ConnectionInitResponseMessage struct {

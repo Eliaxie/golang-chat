@@ -9,8 +9,6 @@ import (
 	"github.com/fatih/color"
 )
 
-
-
 var currentMessage int
 
 type GroupCreationInfo struct {
@@ -76,17 +74,22 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 				continue
 			}
 
+			// check if client is connected
+			if !_controller.Model.Clients[client] {
+				continue
+			}
+
 			menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
 				clientsToAdd = append(clientsToAdd, client)
 			}})
 		}
-		//add done option
+		// add done option
 		menuOptions = append(menuOptions, MenuOption{"[Create group]", func() {
 			_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
 			log.Infoln("Group " + groupInfo.GroupName + " created successfully")
 			adding = false
 		}})
-		//add back option
+		// add back option
 		menuOptions = append(menuOptions, MenuOption{"[BACK]", func() { adding = false }})
 
 		DisplayMenu(menuOptions)

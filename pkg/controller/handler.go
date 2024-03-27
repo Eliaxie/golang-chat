@@ -2,14 +2,20 @@ package controller
 
 import (
 	"golang-chat/pkg/model"
+	"strings"
 	"sync"
 )
 
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
-	delete(controller.Model.PendingClients, client.ConnectionString)
-	client.Proc_id = connInitMsg.ClientID
-	controller.Model.Clients[*client] = true
 
+	oldConnectionString := client.ConnectionString
+	client.Proc_id = connInitMsg.ClientID
+	client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].Request().Host, ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
+	controller.Model.ClientWs[client.ConnectionString] = controller.Model.ClientWs[oldConnectionString]
+	delete(controller.Model.ClientWs, oldConnectionString)
+	delete(controller.Model.PendingClients, oldConnectionString)
+
+	controller.Model.Clients[*client] = true
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
