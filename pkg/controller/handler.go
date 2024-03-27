@@ -52,16 +52,19 @@ func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncP
 
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client *model.Client) {
 	var _clients []model.Client
-	for _, groupClients := range groupCreateMsg.Clients {
+	for _, serializedClient := range groupCreateMsg.Clients {
 		// remove self from the list of clients
-		if c.Model.Myself.Proc_id == groupClients.Proc_id {
+		if c.Model.Myself.Proc_id == serializedClient.Proc_id {
 			continue
 		}
-		if groupClients.Proc_id == client.Proc_id {
+		if serializedClient.Proc_id == client.Proc_id {
 			continue
 		}
 
-		_clients = append(_clients, c.AddNewConnection(groupClients.HostName))
+		client := c.AddNewConnection(serializedClient.HostName)
+		client.Proc_id = serializedClient.Proc_id
+		// new client with proc_id and hostName of groupClients
+		_clients = append(_clients, client)
 
 	}
 	// add original client to the list of clients

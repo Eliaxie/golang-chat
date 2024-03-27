@@ -53,9 +53,9 @@ func startServer(port string) {
 }
 
 func messageHandler(ws *websocket.Conn) {
-	client := &model.Client{Proc_id: "", ConnectionString: ws.Config().Location.String()}
-	controller.Model.PendingClients[ws.Config().Location.String()] = client
-	controller.Model.ClientWs[ws.Config().Location.String()] = ws
+	client := &model.Client{Proc_id: "", ConnectionString: ws.Request().RemoteAddr}
+	controller.Model.PendingClients[ws.Request().RemoteAddr] = client
+	controller.Model.ClientWs[ws.Request().RemoteAddr] = ws
 
 	receiveLoop(ws, client)
 }
