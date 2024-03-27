@@ -13,7 +13,7 @@ var clientsToAdd []model.Client
 
 var currentMessage int
 
-type GoupCreationInfo struct {
+type GroupCreationInfo struct {
 	GroupName        string
 	ConsistencyModel model.ConsistencyModel
 }
@@ -22,10 +22,10 @@ func displayCreateNewGroup() {
 	MoveScreenUp()
 	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
-	displayChooseConsistency(GoupCreationInfo{GroupName: groupName})
+	displayChooseConsistency(GroupCreationInfo{GroupName: groupName})
 }
 
-func displayChooseConsistency(groupInfo GoupCreationInfo) {
+func displayChooseConsistency(groupInfo GroupCreationInfo) {
 	MoveScreenUp()
 	color.Green("Choose consistency model for group:")
 
@@ -55,7 +55,7 @@ func displayChooseConsistency(groupInfo GoupCreationInfo) {
 
 }
 
-func displayAddClientsToGroup(groupInfo GoupCreationInfo) {
+func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 	MoveScreenUp()
 	color.Green("Add clients to group " + groupInfo.GroupName)
 
@@ -80,13 +80,12 @@ func displayAddClientsToGroup(groupInfo GoupCreationInfo) {
 
 		menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
 			clientsToAdd = append(clientsToAdd, client)
-			log.Infoln("Client " + client.Proc_id + " added to group " + groupInfo.GroupName)
 			displayAddClientsToGroup(groupInfo)
 		}})
 	}
 	//add done option
 	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupInfo.GroupName, model.CAUSAL, clientsToAdd)
+		_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
 		log.Infoln("Group " + groupInfo.GroupName + " created successfully")
 		displayMainMenu()
 	}})
@@ -123,6 +122,7 @@ func inputLoop(group model.Group) {
 		value := ReadStringTrimmed()
 		if value == "/exit" {
 			_controller.Notifier.Remove(group)
+			currentMessage = 0
 			displayMainMenu()
 			break
 		}
@@ -143,7 +143,7 @@ func displayGroupMembers(group model.Group) {
 }
 
 func UpdateGroup(group model.Group) {
-	log.Debugln("Updating group" + group.Name + "made by " + group.Madeby)
+	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
 	var stableMessages = _controller.Model.StableMessages[group]
 	for i := currentMessage; i < len(stableMessages); i++ {
 		color.Yellow(stableMessages[i].Content.Text)
