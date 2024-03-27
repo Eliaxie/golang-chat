@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 )
 
-var clientsToAdd []model.Client
+
 
 var currentMessage int
 
@@ -22,10 +22,8 @@ func displayCreateNewGroup() {
 	MoveScreenUp()
 	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
-	displayChooseConsistency(GroupCreationInfo{GroupName: groupName})
-}
+	groupInfo := GroupCreationInfo{GroupName: groupName}
 
-func displayChooseConsistency(groupInfo GroupCreationInfo) {
 	MoveScreenUp()
 	color.Green("Choose consistency model for group:")
 
@@ -36,22 +34,19 @@ func displayChooseConsistency(groupInfo GroupCreationInfo) {
 	DisplayMenu([]MenuOption{
 		{"FIFO", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.FIFO)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"CAUSAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.CAUSAL)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"GLOBAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.GLOBAL)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"LINEARIZABLE", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.LINEARIZABLE)
-			displayAddClientsToGroup(groupInfo)
 		}},
-		{"Back", displayMainMenu},
 	})
+
+	displayAddClientsToGroup(groupInfo)
 
 }
 
@@ -60,36 +55,42 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 	color.Green("Add clients to group " + groupInfo.GroupName)
 
 	// add a menu option for each client
-	var menuOptions []MenuOption
-	//
-	for client := range _controller.Model.Clients {
 
-		// check if the client is already in the list of clients to add
-		found := func() bool {
-			for _, val := range clientsToAdd {
-				if val == client {
-					return true
+	adding := true
+	var clientsToAdd []model.Client
+	for adding {
+		var menuOptions []MenuOption
+		for client := range _controller.Model.Clients {
+
+			// check if the client is already in the list of clients to add
+			found := func() bool {
+				for _, val := range clientsToAdd {
+					if val == client {
+						return true
+					}
 				}
+				return false
+			}()
+
+			if found {
+				continue
 			}
-			return false
-		}()
 
-		if found {
-			continue
+			menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
+				clientsToAdd = append(clientsToAdd, client)
+			}})
 		}
-
-		menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
-			clientsToAdd = append(clientsToAdd, client)
-			displayAddClientsToGroup(groupInfo)
+		//add done option
+		menuOptions = append(menuOptions, MenuOption{"[Create group]", func() {
+			_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
+			log.Infoln("Group " + groupInfo.GroupName + " created successfully")
+			adding = false
 		}})
+		//add back option
+		menuOptions = append(menuOptions, MenuOption{"[BACK]", func() { adding = false }})
+
+		DisplayMenu(menuOptions)
 	}
-	//add done option
-	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
-		log.Infoln("Group " + groupInfo.GroupName + " created successfully")
-		displayMainMenu()
-	}})
-	DisplayMenu(menuOptions)
 }
 
 func displayOpenGroup() {

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 
 	// "os"
@@ -25,7 +26,6 @@ func DisplayMenu(options []MenuOption) {
 	for i, option := range options {
 		fmt.Printf("%d. %s\n", i+1, option.Option)
 	}
-
 	for {
 		choice := ReadStringTrimmed()
 
@@ -33,7 +33,7 @@ func DisplayMenu(options []MenuOption) {
 			options[choiceInt-1].Action()
 			break
 		} else {
-			fmt.Println("Invalid choice")
+			color.Red("Invalid choice")
 		}
 	}
 }

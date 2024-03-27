@@ -48,20 +48,24 @@ func displayInsertUsername() string {
 
 // Function to display the main menu
 func displayMainMenu() {
-
-	DisplayMenu([]MenuOption{
-		{"Add new connections", displayAddNewConnectionsMenu},
-		{"Create new Group", displayCreateNewGroup},
-		{"Open Group", displayOpenGroup},
-	})
+	for {
+		DisplayMenu([]MenuOption{
+			{"Add new connections", displayAddNewConnectionsMenu},
+			{"Create new Group", displayCreateNewGroup},
+			{"Open Group", displayOpenGroup},
+		})
+	}
 }
 
 func displayAddNewConnectionsMenu() {
-	DisplayMenu([]MenuOption{
-		{"Add Connection From File", displayAddConnectionFromFile},
-		{"Add Connection Manually", displayAddConnectionManually},
-		{"Back", displayMainMenu},
-	})
+	inMenu := true
+	for inMenu {
+		DisplayMenu([]MenuOption{
+			{"Add Connection From File", displayAddConnectionFromFile},
+			{"Add Connection Manually", displayAddConnectionManually},
+			{"Back", func() { inMenu = false }},
+		})
+	}
 }
 
 func displayAddConnectionFromFile() {
@@ -71,8 +75,7 @@ func displayAddConnectionFromFile() {
 	for {
 		filePath := ReadStringTrimmed()
 		if filePath == "q" {
-			displayAddNewConnectionsMenu()
-			break
+			return
 		}
 
 		// call the function to add the connections from the file
@@ -86,34 +89,22 @@ func displayAddConnectionFromFile() {
 	}
 	log.Infoln("Connections added successfully")
 	log.Debug(connections)
-	displayMainMenu()
 }
 
 func displayAddConnectionManually() {
-	for {
-		MoveScreenUp()
-		fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
-		connection := ReadStringTrimmed()
-		if connection == "q" {
-			displayAddNewConnectionsMenu()
-			break
-		}
-		if connection == "" {
-			connection = model.DEFAULT_CONNECTION
-		}
-
-		// call the function to add the connection
-		log.Debug(connection)
-		pendingClient := _controller.AddNewConnection(connection)
-		_controller.WaitForConnection(pendingClient)
-		color.Green("Connected")
-
-		// ask the user if they want to add another connection
-		fmt.Println("Do you want to add another connection? (y/n)")
-		choice := ReadStringTrimmed()
-		if choice == "n" {
-			break
-		}
+	MoveScreenUp()
+	fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
+	connection := ReadStringTrimmed()
+	if connection == "q" {
+		return
 	}
-	displayMainMenu()
+	if connection == "" {
+		connection = model.DEFAULT_CONNECTION
+	}
+
+	// call the function to add the connection
+	log.Debug(connection)
+	pendingClient := _controller.AddNewConnection(connection)
+	_controller.WaitForConnection(pendingClient)
+	color.Green("Connected")
 }
