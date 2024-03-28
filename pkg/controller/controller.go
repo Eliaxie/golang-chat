@@ -76,12 +76,17 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	clients = append(clients, c.Model.Myself)
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
-	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
-	for _, client := range clients {
-		c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
-	}
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
-
+	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
+	switch consistencyModel {
+	case model.CAUSAL:
+		for _, client := range clients {
+			c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
+		}
+	case model.GLOBAL:
+		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
+		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
+	}
 	// Send the group create message to all the clients
 	var serializedClients []model.SerializedClient
 	for _, client := range clients {

@@ -77,13 +77,20 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	_clients = append(_clients, *client)
 
 	c.Model.Groups[groupCreateMsg.Group] = _clients
-	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
 	c.Model.GroupsLocks[groupCreateMsg.Group] = &sync.Mutex{}
 	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
 	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
+	
+	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
-	for _, client := range _clients {
-		c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[client.Proc_id] = 0
+	switch groupCreateMsg.ConsistencyModel {
+	case model.CAUSAL:
+		for _, client := range _clients {
+			c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[client.Proc_id] = 0
+		}
+	case model.GLOBAL:
+		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
+		c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[c.Model.Myself.Proc_id] = 0
 	}
 }
 
