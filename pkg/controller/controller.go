@@ -91,9 +91,10 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	}
 	c.multicastMessage(
 		model.GroupCreateMessage{
-			BaseMessage: model.BaseMessage{MessageType: model.GROUP_CREATE},
-			Group:       model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id},
-			Clients:     serializedClients}, clients)
+			BaseMessage:      model.BaseMessage{MessageType: model.GROUP_CREATE},
+			ConsistencyModel: consistencyModel,
+			Group:            model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id},
+			Clients:          serializedClients}, clients)
 	return group
 }
 
