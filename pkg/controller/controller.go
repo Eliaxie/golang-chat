@@ -45,7 +45,7 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
 	case model.CAUSAL:
-		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock, }
+		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock}
 		c.Model.PendingMessages[message.Group] = append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:

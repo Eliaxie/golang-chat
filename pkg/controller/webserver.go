@@ -143,7 +143,13 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 			} else {
 				controller.HandleConnectionRestoreResponseMessage(connRestoreRespMsg, client)
 			}
-
+		case model.MESSAGE_ACK:
+			var ackMsg model.MessageAck
+			if err := json.Unmarshal(data, &ackMsg); err != nil {
+				log.Error("Error parsing MessageAck:", err)
+			} else {
+				controller.HandleMessageAck(ackMsg, client)
+			}
 		default:
 			log.Error("Unknown message type:", msg.GetMessageType())
 		}

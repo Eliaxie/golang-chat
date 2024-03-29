@@ -80,7 +80,7 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	c.Model.GroupsLocks[groupCreateMsg.Group] = &sync.Mutex{}
 	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
 	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
-	
+
 	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
 	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
 	switch groupCreateMsg.ConsistencyModel {
@@ -96,4 +96,16 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {
 	c.tryAcceptMessage(textMsg, *client)
+}
+
+func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model.Client) {
+	// acquire group lock
+	c.Model.GroupsLocks[messageAck.Group].Lock()
+	c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
+	newMessage := false
+	newMessage = c.tryAcceptTopGlobals(messageAck.Group)
+	if newMessage {
+		c.Notifier.Notify(messageAck.Group)
+	}
+	c.Model.GroupsLocks[messageAck.Group].Unlock()
 }
