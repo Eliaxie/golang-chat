@@ -110,10 +110,17 @@ type VectorClock struct {
 	Clock map[string]int `json:"clock"`
 }
 
+type ScalarClockToProcId struct {
+	ScalarClock int    `json:"scalarClock"`
+	Proc_id     string `json:"proc_id"`
+}
+
 type PendingMessage struct {
 	Content     UniqueMessage
 	Client      Client
 	VectorClock VectorClock
+	ScalarClock ScalarClockToProcId
+	Acks map[string]bool
 }
 
 type StableMessages struct {
