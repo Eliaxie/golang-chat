@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"debug/pe"
 	"golang-chat/pkg/model"
 	"sort"
 )
