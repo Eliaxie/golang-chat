@@ -35,9 +35,7 @@ func (c *Controller) StartServer(port string) {
 func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Client) bool {
 
 	c.Model.GroupsLocks[message.Group].Lock()
-	pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock}
-	c.Model.PendingMessages[message.Group] =
-		append(c.Model.PendingMessages[message.Group], pendingMessage)
+
 
 	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
@@ -47,8 +45,14 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
 	case model.CAUSAL:
+		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock}
+		c.Model.PendingMessages[message.Group] = append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:
+		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, 
+			ScalarClock: model.ScalarClockToProcId{ScalarClock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}}
+		c.Model.PendingMessages[message.Group] =
+			append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptGlobalMessages(message, client)
 	case model.LINEARIZABLE:
 		newMessage = c.tryAcceptLinearizableMessages(message, client)
@@ -76,12 +80,17 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	clients = append(clients, c.Model.Myself)
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
-	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
-	for _, client := range clients {
-		c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
-	}
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
-
+	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
+	switch consistencyModel {
+	case model.CAUSAL:
+		for _, client := range clients {
+			c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
+		}
+	case model.GLOBAL:
+		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
+		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
+	}
 	// Send the group create message to all the clients
 	var serializedClients []model.SerializedClient
 	for _, client := range clients {

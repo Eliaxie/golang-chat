@@ -27,6 +27,7 @@ const (
 	SYNC_PEERS
 	SYNC_PEERS_RESPONSE
 	GROUP_CREATE
+	MESSAGE_ACK
 )
 
 type Message interface {
@@ -80,6 +81,12 @@ type ConnectionInitResponseMessage struct {
 	ClientID string `json:"clientId"`
 }
 
+type MessageAck struct {
+	BaseMessage
+	Group     Group               `json:"group"`
+	Reference ScalarClockToProcId `json:"reference"`
+}
+
 type ConnectionRestoreMessage struct {
 	BaseMessage
 	ClientID string `json:"clientId"`
@@ -110,10 +117,16 @@ type VectorClock struct {
 	Clock map[string]int `json:"clock"`
 }
 
+type ScalarClockToProcId struct {
+	Clock   int    `json:"scalarClock"`
+	Proc_id string `json:"proc_id"`
+}
+
 type PendingMessage struct {
 	Content     UniqueMessage
 	Client      Client
 	VectorClock VectorClock
+	ScalarClock ScalarClockToProcId
 }
 
 type StableMessages struct {
@@ -131,7 +144,9 @@ type Model struct {
 	PendingClients  map[string]*Client
 	Clients         map[Client]bool
 	PendingMessages map[Group][]PendingMessage
-	StableMessages  map[Group][]StableMessages
+	// group -> scalarClock -> array proc_id from which acks were received
+	MessageAcks    map[Group]map[ScalarClockToProcId]map[string]bool
+	StableMessages map[Group][]StableMessages
 
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
