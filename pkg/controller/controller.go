@@ -36,7 +36,6 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 
 	c.Model.GroupsLocks[message.Group].Lock()
 
-
 	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
 	log.Debug("Buffer Pending: ", string(_logP))
@@ -49,8 +48,8 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 		c.Model.PendingMessages[message.Group] = append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:
-		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, 
-			ScalarClock: model.ScalarClockToProcId{ScalarClock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}}
+		pendingMessage := model.PendingMessage{Content: message.Content, Client: client,
+			ScalarClock: model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}}
 		c.Model.PendingMessages[message.Group] =
 			append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptGlobalMessages(message, client)

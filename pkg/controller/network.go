@@ -51,6 +51,8 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
 	c.multicastMessage(textMessage, c.Model.Groups[group])
-	// c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
-	c.Notifier.Notify(group)
+	if c.Model.GroupsConsistency[group] != model.GLOBAL {
+		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
+		c.Notifier.Notify(group)
+	}
 }
