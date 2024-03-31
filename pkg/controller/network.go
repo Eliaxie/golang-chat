@@ -54,5 +54,7 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	if c.Model.GroupsConsistency[group] != model.GLOBAL {
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
 		c.Notifier.Notify(group)
+		return
 	}
+	c.appendSortedPending(textMessage, c.Model.Myself)
 }

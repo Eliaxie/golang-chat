@@ -48,10 +48,6 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 		c.Model.PendingMessages[message.Group] = append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:
-		pendingMessage := model.PendingMessage{Content: message.Content, Client: client,
-			ScalarClock: model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}}
-		c.Model.PendingMessages[message.Group] =
-			append(c.Model.PendingMessages[message.Group], pendingMessage)
 		newMessage = c.tryAcceptGlobalMessages(message, client)
 	case model.LINEARIZABLE:
 		newMessage = c.tryAcceptLinearizableMessages(message, client)
@@ -74,9 +70,29 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 }
 
 func (c *Controller) CreateGroup(groupName string, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
-	// Add the group to the model
-	group := model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id}
+
 	clients = append(clients, c.Model.Myself)
+	group := c.createGroup(model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id}, consistencyModel, clients)
+
+	// Send the group create message to all the clients
+	var serializedClients []model.SerializedClient
+	for _, client := range clients {
+		serializedClients = append(serializedClients,
+			model.SerializedClient{Proc_id: client.Proc_id,
+				HostName: client.ConnectionString})
+	}
+
+	c.multicastMessage(
+		model.GroupCreateMessage{
+			BaseMessage:      model.BaseMessage{MessageType: model.GROUP_CREATE},
+			ConsistencyModel: consistencyModel,
+			Group:            model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id},
+			Clients:          serializedClients}, clients)
+	return group
+}
+
+func (c *Controller) createGroup(group model.Group, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
+
 	c.Model.Groups[group] = clients
 	c.Model.GroupsConsistency[group] = consistencyModel
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
@@ -89,20 +105,9 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 	case model.GLOBAL:
 		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
 		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
+		// Intialize the map for message acks for the group
+		c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
 	}
-	// Send the group create message to all the clients
-	var serializedClients []model.SerializedClient
-	for _, client := range clients {
-		serializedClients = append(serializedClients,
-			model.SerializedClient{Proc_id: client.Proc_id,
-				HostName: client.ConnectionString})
-	}
-	c.multicastMessage(
-		model.GroupCreateMessage{
-			BaseMessage:      model.BaseMessage{MessageType: model.GROUP_CREATE},
-			ConsistencyModel: consistencyModel,
-			Group:            model.Group{Name: groupName, Madeby: c.Model.Myself.Proc_id},
-			Clients:          serializedClients}, clients)
 	return group
 }
 

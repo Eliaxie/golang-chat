@@ -3,7 +3,6 @@ package controller
 import (
 	"golang-chat/pkg/model"
 	"strings"
-	"sync"
 )
 
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
@@ -58,6 +57,10 @@ func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncP
 
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client *model.Client) {
 	var _clients []model.Client
+	// add original client and self to the list of clients
+	_clients = append(_clients, *client)
+	_clients = append(_clients, c.Model.Myself)
+	// add connections for all clients other than self and sender
 	for _, serializedClient := range groupCreateMsg.Clients {
 		// remove self from the list of clients
 		if c.Model.Myself.Proc_id == serializedClient.Proc_id {
@@ -67,31 +70,14 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 			continue
 		}
 
-		client := c.AddNewConnection(serializedClient.HostName)
-		client.Proc_id = serializedClient.Proc_id
+		clientConnection := c.AddNewConnection(serializedClient.HostName)
+		clientConnection.Proc_id = serializedClient.Proc_id
 		// new client with proc_id and hostName of groupClients
-		_clients = append(_clients, client)
+		_clients = append(_clients, clientConnection)
 
 	}
-	// add original client to the list of clients
-	_clients = append(_clients, *client)
 
-	c.Model.Groups[groupCreateMsg.Group] = _clients
-	c.Model.GroupsLocks[groupCreateMsg.Group] = &sync.Mutex{}
-	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
-	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
-
-	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
-	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
-	switch groupCreateMsg.ConsistencyModel {
-	case model.CAUSAL:
-		for _, client := range _clients {
-			c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[client.Proc_id] = 0
-		}
-	case model.GLOBAL:
-		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
-		c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[c.Model.Myself.Proc_id] = 0
-	}
+	c.createGroup(groupCreateMsg.Group, groupCreateMsg.ConsistencyModel, _clients)
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {
@@ -99,9 +85,12 @@ func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.
 }
 
 func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model.Client) {
-	// acquire group lock
 	c.Model.GroupsLocks[messageAck.Group].Lock()
+	if c.Model.MessageAcks[messageAck.Group][messageAck.Reference] == nil {
+		c.Model.MessageAcks[messageAck.Group][messageAck.Reference] = map[string]bool{}
+	}
 	c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
+
 	newMessage := false
 	newMessage = c.tryAcceptTopGlobals(messageAck.Group)
 	if newMessage {

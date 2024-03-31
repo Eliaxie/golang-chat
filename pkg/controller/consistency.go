@@ -46,16 +46,27 @@ func (c *Controller) acceptCasualMessage(message model.TextMessage, client model
 }
 
 func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client model.Client) bool {
-	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
+
+	c.appendSortedPending(message, client)
 
 	// multicast message ack to all group members
-	c.multicastMessage(model.MessageAck{Group: message.Group, Reference: ScalarClock}, c.Model.Groups[message.Group])
+	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
+	c.multicastMessage(model.MessageAck{
+		BaseMessage: model.BaseMessage{MessageType: model.MESSAGE_ACK},
+		Group:       message.Group, Reference: ScalarClock}, c.Model.Groups[message.Group])
+
+	if c.Model.MessageAcks[message.Group][ScalarClock] == nil {
+		c.Model.MessageAcks[message.Group][ScalarClock] = map[string]bool{}
+	}
 
 	c.Model.MessageAcks[message.Group][ScalarClock][client.Proc_id] = true
+	return c.tryAcceptTopGlobals(message.Group)
+}
 
+func (c *Controller) appendSortedPending(message model.TextMessage, client model.Client) {
+	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
 	pendingMessage := model.PendingMessage{Content: message.Content, Client: client,
 		ScalarClock: ScalarClock}
-
 	// find the index where to insert the message
 	pendingMessages := c.Model.PendingMessages[message.Group]
 	index := sort.Search(len(pendingMessages), func(i int) bool {
@@ -68,7 +79,6 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 	// insert the message
 	c.Model.PendingMessages[message.Group] = append(pendingMessages[:index], append([]model.PendingMessage{pendingMessage}, pendingMessages[index:]...)...)
 
-	return c.tryAcceptTopGlobals(message.Group)
 }
 
 func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
@@ -77,9 +87,13 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 	// inner functions that checks if all acks for a message have been received
 	checkAcks := func(pendingMessage model.PendingMessage) bool {
 		groupMembers := c.Model.Groups[group]
-		if len(c.Model.MessageAcks[group][pendingMessage.ScalarClock]) == len(groupMembers) {
+		receivedAcks := c.Model.MessageAcks[group][pendingMessage.ScalarClock]
+		if len(receivedAcks) == len(groupMembers)-1 {
 			// for each group member check if an ack has been received
 			for _, groupMember := range groupMembers {
+				if groupMember.Proc_id == c.Model.Myself.Proc_id {
+					continue
+				}
 				if _, ok := c.Model.MessageAcks[group][pendingMessage.ScalarClock][groupMember.Proc_id]; !ok {
 					return false
 				}
@@ -90,14 +104,15 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 	}
 
 	// try accepting pending messages until one is not accepted
-	for pending_index, pendingMessage := range c.Model.PendingMessages[group] {
+	for _, pendingMessage := range c.Model.PendingMessages[group] {
 		isAccepted := checkAcks(pendingMessage)
 		if !isAccepted {
 			break
 		}
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
 			model.StableMessages{Content: pendingMessage.Content})
-		c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
+		c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
+		c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
 		hasNewMessages = isAccepted || hasNewMessages
 	}
 	return hasNewMessages
