@@ -3,6 +3,7 @@ package view
 import (
 	"fmt"
 	"golang-chat/pkg/model"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -150,7 +151,12 @@ func UpdateGroup(group model.Group) {
 	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
 	var stableMessages = _controller.Model.StableMessages[group]
 	for i := currentMessage; i < len(stableMessages); i++ {
-		color.Yellow(stableMessages[i].Content.Text)
+		fmt.Print(color.RedString(strings.Split(stableMessages[i].Client.Proc_id, "-")[0] + ": "))
+		fmt.Println(color.YellowString(stableMessages[i].Content.Text))
 		currentMessage++
 	}
+}
+
+func isolateNameFromProcId(proc_id string) string {
+	return strings.Split(proc_id, "-")[0]
 }

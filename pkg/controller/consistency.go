@@ -23,7 +23,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 				}
 				if everyOtherIsLower {
 					c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-						model.StableMessages{Content: pendingMessage.Content})
+						model.StableMessages{Content: pendingMessage.Content, Client: pendingMessage.Client})
 
 					c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
 					c.Model.GroupsVectorClocks[group].Clock[proc_id]++
@@ -110,7 +110,7 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 			break
 		}
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-			model.StableMessages{Content: pendingMessage.Content})
+			model.StableMessages{Content: pendingMessage.Content, Client: pendingMessage.Client})
 		c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
 		c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
 		hasNewMessages = isAccepted || hasNewMessages

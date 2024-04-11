@@ -19,6 +19,9 @@ func InitWebServer(port string, c *Controller) {
 
 func (c *Controller) multicastMessage(message model.Message, clients []model.Client) {
 	data, _ := json.Marshal(message)
+	// print list of clients
+	log.Debugln("Multicasting message to clients:")
+	log.Debugln(clients)
 	for _, client := range clients {
 		if client != c.Model.Myself {
 			sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
@@ -32,7 +35,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) 
 		log.Fatal(err)
 	}
 	client := &model.Client{Proc_id: "", ConnectionString: serverAddress}
-	c.Model.PendingClients[serverAddress] = client
+	c.Model.PendingClients[serverAddress] = struct{}{}
 	c.Model.ClientWs[serverAddress] = ws
 
 	initializeClient(c.Model.Myself.Proc_id, client)
@@ -41,7 +44,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) 
 }
 
 func sendMessageSlave(ws *websocket.Conn, msg []byte) error {
-	log.Debug("Slave: Sending message:", string(msg))
+	log.Debugln("Slave: Sending message:", string(msg))
 	return websocket.Message.Send(ws, msg)
 }
 
@@ -54,7 +57,7 @@ func startServer(port string) {
 
 func messageHandler(ws *websocket.Conn) {
 	client := &model.Client{Proc_id: "", ConnectionString: ws.Request().RemoteAddr}
-	controller.Model.PendingClients[ws.Request().RemoteAddr] = client
+	controller.Model.PendingClients[ws.Request().RemoteAddr] = struct{}{}
 	controller.Model.ClientWs[ws.Request().RemoteAddr] = ws
 
 	receiveLoop(ws, client)

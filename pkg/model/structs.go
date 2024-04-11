@@ -130,6 +130,7 @@ type PendingMessage struct {
 }
 
 type StableMessages struct {
+	Client  Client
 	Content UniqueMessage
 }
 
@@ -141,7 +142,7 @@ type Model struct {
 	// map client_endpoint -> ws
 	ClientWs map[string]*websocket.Conn
 	// map client_endpoint -> client (before client init)
-	PendingClients  map[string]*Client
+	PendingClients  map[string]struct{}
 	Clients         map[Client]bool
 	PendingMessages map[Group][]PendingMessage
 	// group -> scalarClock -> array proc_id from which acks were received

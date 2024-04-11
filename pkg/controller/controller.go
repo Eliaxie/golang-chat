@@ -38,8 +38,8 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 
 	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
-	log.Debug("Buffer Pending: ", string(_logP))
-	log.Debug("Buffer Stable: ", string(_logS))
+	log.Debugln("Buffer Pending: ", string(_logP))
+	log.Debugln("Buffer Stable: ", string(_logS))
 
 	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
@@ -64,8 +64,8 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 
 	_logP, _ = json.Marshal(c.Model.PendingMessages[message.Group])
 	_logS, _ = json.Marshal(c.Model.StableMessages[message.Group])
-	log.Debug("Buffer Pending: ", string(_logP))
-	log.Debug("Buffer Stable: ", string(_logS))
+	log.Debugln("Buffer Pending: ", string(_logP))
+	log.Debugln("Buffer Stable: ", string(_logS))
 	return false
 }
 

@@ -36,7 +36,7 @@ go run main.go
 
 You can customize the log level at startup using the `-v` flag. The number of `v` characters indicates the log level, as follows:
 
-- `No flag`:  PanicLevel
+- `No flag`: PanicLevel
 - `-v`: FatalLevel
 - `-vv`: ErrorLevel
 - `-vvv`: WarnLevel
@@ -44,3 +44,4 @@ You can customize the log level at startup using the `-v` flag. The number of `v
 - `-vvvvv`: DebugLevel
 - `-vvvvvv`: TraceLevel
 
+![connection protocol](https://www.plantuml.com/plantuml/png/ZPCnJyCm48Lt_mgFT6X-009KG0niY0uPgWgvyLDZDJrNyRM_7tEHHIyD4TbykU_T-ULbbTZrV3vsvhaB3UpooRx4tRsjiKknEO1jeC36DHmkZl7pylSWYCab-x3Ce1olqTQHJwqxm9X1FlULhW-G3xH_xGA8qoQBL6lq5_Hlv4yn46_je-N-32jFTICmaFLVQBt-Ib8ilEnPhZUQBfBLSBgPhy0oLIDwRYF50TkqmNlGjhXZF9INPkHx4ucG6oAzKs1xH4fk3w6KwKfaPa5bZ5vGOHuT67V_yMKn1UgnyuXIBpQN3YcEVVX4EaLAcF1ZAf4wAbRTRZvpYwcqYSGLD4hcp8TMMwr0Flzetm00)

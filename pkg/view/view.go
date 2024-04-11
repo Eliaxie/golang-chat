@@ -88,7 +88,7 @@ func displayAddConnectionFromFile() {
 		fmt.Println("Error while trying to read the file. Please try again. (\"q\" to go back)")
 	}
 	log.Infoln("Connections added successfully")
-	log.Debug(connections)
+	log.Debugln(connections)
 }
 
 func displayAddConnectionManually() {
@@ -103,7 +103,7 @@ func displayAddConnectionManually() {
 	}
 
 	// call the function to add the connection
-	log.Debug(connection)
+	log.Debugln(connection)
 	pendingClient := _controller.AddNewConnection(connection)
 	_controller.WaitForConnection(pendingClient)
 	color.Green("Connected")
