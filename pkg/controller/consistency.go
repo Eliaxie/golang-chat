@@ -48,6 +48,8 @@ func (c *Controller) acceptCasualMessage(message model.TextMessage, client model
 func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client model.Client) bool {
 
 	c.appendSortedPending(message, client)
+	// increment own clock
+	c.Model.GroupsVectorClocks[message.Group].Clock[c.Model.Myself.Proc_id]++
 
 	// multicast message ack to all group members
 	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
