@@ -3,17 +3,16 @@ package view
 import (
 	"fmt"
 	"golang-chat/pkg/model"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/fatih/color"
 )
 
-var clientsToAdd []model.Client
-
 var currentMessage int
 
-type GoupCreationInfo struct {
+type GroupCreationInfo struct {
 	GroupName        string
 	ConsistencyModel model.ConsistencyModel
 }
@@ -22,10 +21,8 @@ func displayCreateNewGroup() {
 	MoveScreenUp()
 	fmt.Print("Enter the group name: ")
 	groupName := ReadStringTrimmed()
-	displayChooseConsistency(GoupCreationInfo{GroupName: groupName})
-}
+	groupInfo := GroupCreationInfo{GroupName: groupName}
 
-func displayChooseConsistency(groupInfo GoupCreationInfo) {
 	MoveScreenUp()
 	color.Green("Choose consistency model for group:")
 
@@ -36,61 +33,68 @@ func displayChooseConsistency(groupInfo GoupCreationInfo) {
 	DisplayMenu([]MenuOption{
 		{"FIFO", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.FIFO)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"CAUSAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.CAUSAL)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"GLOBAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.GLOBAL)
-			displayAddClientsToGroup(groupInfo)
 		}},
 		{"LINEARIZABLE", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.LINEARIZABLE)
-			displayAddClientsToGroup(groupInfo)
 		}},
-		{"Back", displayMainMenu},
 	})
+
+	displayAddClientsToGroup(groupInfo)
 
 }
 
-func displayAddClientsToGroup(groupInfo GoupCreationInfo) {
+func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 	MoveScreenUp()
 	color.Green("Add clients to group " + groupInfo.GroupName)
 
 	// add a menu option for each client
-	var menuOptions []MenuOption
-	//
-	for client := range _controller.Model.Clients {
 
-		// check if the client is already in the list of clients to add
-		found := func() bool {
-			for _, val := range clientsToAdd {
-				if val == client {
-					return true
+	adding := true
+	var clientsToAdd []model.Client
+	for adding {
+		var menuOptions []MenuOption
+		for client := range _controller.Model.Clients {
+
+			// check if the client is already in the list of clients to add
+			found := func() bool {
+				for _, val := range clientsToAdd {
+					if val == client {
+						return true
+					}
 				}
+				return false
+			}()
+
+			if found {
+				continue
 			}
-			return false
-		}()
 
-		if found {
-			continue
+			// check if client is connected
+			if !_controller.Model.Clients[client] {
+				continue
+			}
+
+			menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
+				clientsToAdd = append(clientsToAdd, client)
+			}})
 		}
-
-		menuOptions = append(menuOptions, MenuOption{client.Proc_id, func() {
-			clientsToAdd = append(clientsToAdd, client)
-			log.Infoln("Client " + client.Proc_id + " added to group " + groupInfo.GroupName)
-			displayAddClientsToGroup(groupInfo)
+		// add done option
+		menuOptions = append(menuOptions, MenuOption{"[Create group]", func() {
+			_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
+			log.Infoln("Group " + groupInfo.GroupName + " created successfully")
+			adding = false
 		}})
+		// add back option
+		menuOptions = append(menuOptions, MenuOption{"[BACK]", func() { adding = false }})
+
+		DisplayMenu(menuOptions)
 	}
-	//add done option
-	menuOptions = append(menuOptions, MenuOption{"Back", func() {
-		_controller.CreateGroup(groupInfo.GroupName, model.CAUSAL, clientsToAdd)
-		log.Infoln("Group " + groupInfo.GroupName + " created successfully")
-		displayMainMenu()
-	}})
-	DisplayMenu(menuOptions)
 }
 
 func displayOpenGroup() {
@@ -123,6 +127,7 @@ func inputLoop(group model.Group) {
 		value := ReadStringTrimmed()
 		if value == "/exit" {
 			_controller.Notifier.Remove(group)
+			currentMessage = 0
 			displayMainMenu()
 			break
 		}
@@ -143,10 +148,15 @@ func displayGroupMembers(group model.Group) {
 }
 
 func UpdateGroup(group model.Group) {
-	log.Debugln("Updating group" + group.Name + "made by " + group.Madeby)
+	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
 	var stableMessages = _controller.Model.StableMessages[group]
 	for i := currentMessage; i < len(stableMessages); i++ {
-		color.Yellow(stableMessages[i].Content.Text)
+		fmt.Print(color.RedString(strings.Split(stableMessages[i].Client.Proc_id, "-")[0] + ": "))
+		fmt.Println(color.YellowString(stableMessages[i].Content.Text))
 		currentMessage++
 	}
+}
+
+func isolateNameFromProcId(proc_id string) string {
+	return strings.Split(proc_id, "-")[0]
 }

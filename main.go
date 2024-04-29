@@ -44,6 +44,8 @@ func main() {
 		PendingMessages: make(map[model.Group][]model.PendingMessage),
 		// messages shown to the users
 		StableMessages: make(map[model.Group][]model.StableMessages),
+		// list of acks for each message
+		MessageAcks: make(map[model.Group]map[model.ScalarClockToProcId]map[string]bool),
 
 		// groups
 		Groups:             make(map[model.Group][]model.Client),

@@ -12,7 +12,7 @@ import (
 // Only send function not checking if client is in the model
 func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
 	data, _ := json.Marshal(message)
-	log.Debug(string(data))
+	log.Debugln(string(data))
 	sendMessageSlave(controller.Model.ClientWs[client.ConnectionString], data)
 }
 
@@ -21,7 +21,7 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 		return
 	}
 	data, _ := json.Marshal(message)
-	log.Debug(string(data))
+	log.Debugln(string(data))
 	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
 }
 
@@ -50,7 +50,11 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
+	if c.Model.GroupsConsistency[group] != model.GLOBAL {
+		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content, Client: c.Model.Myself})
+		c.Notifier.Notify(group)
+	} else {
+		c.appendSortedPending(textMessage, c.Model.Myself)
+	}
 	c.multicastMessage(textMessage, c.Model.Groups[group])
-	c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content})
-	c.Notifier.Notify(group)
 }

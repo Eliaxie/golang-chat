@@ -2,14 +2,19 @@ package controller
 
 import (
 	"golang-chat/pkg/model"
-	"sync"
+	"strings"
 )
 
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
-	delete(controller.Model.PendingClients, client.ConnectionString)
-	client.Proc_id = connInitMsg.ClientID
-	controller.Model.Clients[*client] = true
 
+	oldConnectionString := client.ConnectionString
+	client.Proc_id = connInitMsg.ClientID
+	client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].Request().Host, ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
+	controller.Model.ClientWs[client.ConnectionString] = controller.Model.ClientWs[oldConnectionString]
+	delete(controller.Model.ClientWs, oldConnectionString)
+	delete(controller.Model.PendingClients, oldConnectionString)
+
+	controller.Model.Clients[*client] = true
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
@@ -52,32 +57,44 @@ func (c *Controller) HandleSyncPeersResponseMessage(syncPeersRespMsg model.SyncP
 
 func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMessage, client *model.Client) {
 	var _clients []model.Client
-	for _, groupClients := range groupCreateMsg.Clients {
-		// remove self from the list of clients
-		if c.Model.Myself.Proc_id == groupClients.Proc_id {
-			continue
-		}
-		if groupClients.Proc_id == client.Proc_id {
-			continue
-		}
-
-		_clients = append(_clients, c.AddNewConnection(groupClients.HostName))
-
-	}
-	// add original client to the list of clients
+	// add original client and self to the list of clients
 	_clients = append(_clients, *client)
+	_clients = append(_clients, c.Model.Myself)
+	// add connections for all clients other than self and sender
+	for _, serializedClient := range groupCreateMsg.Clients {
+		// remove self from the list of clients
+		if c.Model.Myself.Proc_id == serializedClient.Proc_id {
+			continue
+		}
+		if serializedClient.Proc_id == client.Proc_id {
+			continue
+		}
 
-	c.Model.Groups[groupCreateMsg.Group] = _clients
-	c.Model.GroupsConsistency[groupCreateMsg.Group] = groupCreateMsg.ConsistencyModel
-	c.Model.GroupsLocks[groupCreateMsg.Group] = &sync.Mutex{}
-	c.Model.PendingMessages[groupCreateMsg.Group] = []model.PendingMessage{}
-	c.Model.StableMessages[groupCreateMsg.Group] = []model.StableMessages{}
-	c.Model.GroupsVectorClocks[groupCreateMsg.Group] = model.VectorClock{Clock: map[string]int{}}
-	for _, client := range _clients {
-		c.Model.GroupsVectorClocks[groupCreateMsg.Group].Clock[client.Proc_id] = 0
+		clientConnection := c.AddNewConnection(serializedClient.HostName)
+		clientConnection.Proc_id = serializedClient.Proc_id
+		// new client with proc_id and hostName of groupClients
+		_clients = append(_clients, clientConnection)
+
 	}
+
+	c.createGroup(groupCreateMsg.Group, groupCreateMsg.ConsistencyModel, _clients)
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {
 	c.tryAcceptMessage(textMsg, *client)
+}
+
+func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model.Client) {
+	c.Model.GroupsLocks[messageAck.Group].Lock()
+	if c.Model.MessageAcks[messageAck.Group][messageAck.Reference] == nil {
+		c.Model.MessageAcks[messageAck.Group][messageAck.Reference] = map[string]bool{}
+	}
+	c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
+
+	newMessage := false
+	newMessage = c.tryAcceptTopGlobals(messageAck.Group)
+	if newMessage {
+		c.Notifier.Notify(messageAck.Group)
+	}
+	c.Model.GroupsLocks[messageAck.Group].Unlock()
 }
