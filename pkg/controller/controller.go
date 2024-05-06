@@ -69,6 +69,7 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	return false
 }
 
+// Creates a group and sends the group create message to all the involved clients
 func (c *Controller) CreateGroup(groupName string, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
 
 	clients = append(clients, c.Model.Myself)
