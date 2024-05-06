@@ -36,7 +36,7 @@ func main() {
 		// clients endpoint to ws
 		ClientWs: make(map[string]*websocket.Conn),
 		// clients before the handshake
-		PendingClients: make(map[string]*model.Client),
+		PendingClients: make(map[string]struct{}),
 		// clients after the handshake
 		Clients: make(map[model.Client]bool),
 

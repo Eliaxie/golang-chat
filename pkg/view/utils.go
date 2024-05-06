@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"runtime"
@@ -63,6 +64,21 @@ func ClearScreen() {
 		cmd.Stdout = os.Stdout
 		cmd.Run()
 	}
+}
+
+// takes a list of colors to avoid and returns a random color string
+func RandomColor() color.Attribute {
+	colors := []color.Attribute{
+		color.FgBlack,
+		color.FgRed,
+		color.FgGreen,
+		color.FgYellow,
+		color.FgBlue,
+		color.FgMagenta,
+		color.FgCyan,
+		color.FgWhite,
+	}
+	return colors[rand.Intn(len(colors))]
 }
 
 func MoveScreenUp() {

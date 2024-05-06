@@ -11,6 +11,7 @@ import (
 )
 
 var currentMessage int
+var groupUserColors = make(map[model.Group]map[string]*color.Color)
 
 type GroupCreationInfo struct {
 	GroupName        string
@@ -118,7 +119,19 @@ func displayGroup(group model.Group) {
 	}
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
 	_controller.Notifier.Listen(group, UpdateGroup)
+	if groupUserColors[group] == nil {
+		initializeGroupColors(group)
+	}
+
 	inputLoop(group)
+}
+
+func initializeGroupColors(group model.Group) {
+	groupUserColors[group] = make(map[string]*color.Color)
+	clients := _controller.Model.Groups[group]
+	for _, client := range clients {
+		groupUserColors[group][client.Proc_id] = color.New(RandomColor())
+	}
 }
 
 // function that loops and waits for input from the user
@@ -150,13 +163,10 @@ func displayGroupMembers(group model.Group) {
 func UpdateGroup(group model.Group) {
 	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
 	var stableMessages = _controller.Model.StableMessages[group]
-	for i := currentMessage; i < len(stableMessages); i++ {
-		fmt.Print(color.RedString(strings.Split(stableMessages[i].Client.Proc_id, "-")[0] + ": "))
-		fmt.Println(color.YellowString(stableMessages[i].Content.Text))
+	for _, message := range stableMessages[currentMessage:] {
+		userName := strings.Split(message.Client.Proc_id, "-")[0] + ": "
+		fmt.Print(groupUserColors[group][message.Client.Proc_id].Sprint(userName))
+		fmt.Println(message.Content.Text)
 		currentMessage++
 	}
-}
-
-func isolateNameFromProcId(proc_id string) string {
-	return strings.Split(proc_id, "-")[0]
 }
