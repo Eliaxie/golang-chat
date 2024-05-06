@@ -28,15 +28,41 @@ func (c *Controller) AddNewConnections(connection []string) {
 func (c *Controller) DisconnectClient(client model.Client) {
 
 	for group, clients := range c.Model.Groups {
-		for _, _client := range clients {
+		for index, _client := range clients {
 			if _client == client {
 				// todo: think about group locks here
 				switch c.Model.GroupsConsistency[group] {
 
 				case model.GLOBAL:
+					// remove the client from the active window
+					delete(c.Model.ActiveWindows[group], client.Proc_id) //todo: check if this is correct before lock
 					// todo: stop sending messages (locks?)
+					clientsToNotify := make([]model.Client, len(clients))
+					copy(clientsToNotify, clients)
+					// remove all non active clients from the list of clients to notify
+					for i, client := range clientsToNotify {
+						if _, ok := c.Model.ActiveWindows[group][client.Proc_id]; !ok {
+							clientsToNotify = append(clientsToNotify[:i], clientsToNotify[i+1:]...)
+						}
+					}
+					//TODO: CHECK IF ACTIVE WINDOWS MAY BE A MAP TO CLIENTS INSTEAD OF STRINGS
+
 					// send a message CLIENT_DISCONNECTED to all the clients in the group that the client has disconnected
+					c.multicastMessage(model.ClientDisconnectMessage{BaseMessage: model.BaseMessage{MessageType: model.CLIENT_DISC}, ClientID: client.Proc_id}, clientsToNotify)
+
+					// initiate the disconnection ack array
+					acks := make(map[string]struct{})
+					c.Model.DisconnectionAcks[group] = acks
 					// wait for acks from all the clients
+					for client, _ := range c.Model.ActiveWindows[group] {
+						_, ok := acks[client]
+						if !ok {
+							// wait for the ack
+							time.Sleep(100 * time.Millisecond)
+							//todo: timeout?
+						}
+					}
+
 					// if in majority partition, remove the client from ACTIVE_WINDOW
 					// ...
 					// resume sending messages (locks?)
@@ -136,6 +162,11 @@ func (c *Controller) createGroup(group model.Group, consistencyModel model.Consi
 		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
 		// Intialize the map for message acks for the group
 		c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
+		// put a copy of clients in the active window
+		c.Model.ActiveWindows[group] = make(map[string]struct{})
+		for _, client := range clients {
+			c.Model.ActiveWindows[group][client.Proc_id] = struct{}{}
+		}
 	}
 	return group
 }
