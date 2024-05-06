@@ -28,6 +28,8 @@ const (
 	SYNC_PEERS_RESPONSE
 	GROUP_CREATE
 	MESSAGE_ACK
+	CLIENT_DISC
+	DISC_ACK
 )
 
 type Message interface {
@@ -85,6 +87,16 @@ type MessageAck struct {
 	BaseMessage
 	Group     Group               `json:"group"`
 	Reference ScalarClockToProcId `json:"reference"`
+}
+
+type ClientDisconnectMessage struct {
+	BaseMessage
+	ClientID string `json:"clientId"`
+}
+
+type DisconnectAckMessage struct {
+	BaseMessage
+	ClientID string `json:"clientId"`
 }
 
 type ConnectionRestoreMessage struct {
@@ -149,6 +161,8 @@ type Model struct {
 	MessageAcks    map[Group]map[ScalarClockToProcId]map[string]bool
 	StableMessages map[Group][]StableMessages
 
+	ActiveWindows      map[Group]map[string]struct{} // maps group -> active clients
+	DisconnectionAcks  map[Group]map[string]struct{} // maps group -> clients that sent back an ack
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
