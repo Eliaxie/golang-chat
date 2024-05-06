@@ -25,6 +25,34 @@ func (c *Controller) AddNewConnections(connection []string) {
 	}
 }
 
+func (c *Controller) DisconnectClient(client model.Client) {
+
+	for group, clients := range c.Model.Groups {
+		for _, _client := range clients {
+			if _client == client {
+				// todo: think about group locks here
+				switch c.Model.GroupsConsistency[group] {
+
+				case model.GLOBAL:
+					// todo: stop sending messages (locks?)
+					// send a message CLIENT_DISCONNECTED to all the clients in the group that the client has disconnected
+					// wait for acks from all the clients
+					// if in majority partition, remove the client from ACTIVE_WINDOW
+					// ...
+					// resume sending messages (locks?)
+				case model.CAUSAL:
+					delete(controller.Model.Clients, client)
+				default:
+					delete(controller.Model.Clients, client)
+				}
+
+				break
+			}
+		}
+	}
+
+}
+
 func (c *Controller) StartServer(port string) {
 	c.Model.ServerPort = port
 	InitWebServer(port, c)

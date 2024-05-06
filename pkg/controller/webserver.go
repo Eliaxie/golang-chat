@@ -69,7 +69,8 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 		err := websocket.Message.Receive(ws, &data)
 		if err != nil {
 			log.Errorln(err)
-			delete(controller.Model.Clients, *client)
+			//todo: here we handle disconnections is every error a disconnection?
+			controller.DisconnectClient(*client)
 			break
 		}
 
