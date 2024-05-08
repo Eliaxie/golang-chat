@@ -62,6 +62,11 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 		var menuOptions []MenuOption
 		for client := range _controller.Model.Clients {
 
+			// check if client is connected
+			if !_controller.Model.Clients[client] {
+				continue
+			}
+
 			// check if the client is already in the list of clients to add
 			found := func() bool {
 				for _, val := range clientsToAdd {
@@ -156,7 +161,11 @@ func inputLoop(group model.Group) {
 func displayGroupMembers(group model.Group) {
 	color.Green("Members of group %s", group)
 	for _, client := range _controller.Model.Groups[group] {
-		color.White("- %s", client.Proc_id)
+		if _controller.Model.Clients[client] || client == _controller.Model.Myself {
+			color.White("- %s", client.Proc_id)
+		} else {
+			color.Red("disc - %s", client.Proc_id)
+		}
 	}
 }
 
