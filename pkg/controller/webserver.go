@@ -154,6 +154,20 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 			} else {
 				controller.HandleMessageAck(ackMsg, client)
 			}
+		case model.CLIENT_DISC:
+			var discMsg model.ClientDisconnectMessage
+			if err := json.Unmarshal(data, &discMsg); err != nil {
+				log.Error("Error parsing ClientDisconnectMessage:", err)
+			} else {
+				controller.HandleClientDisconnectMessage(discMsg, client)
+			}
+		case model.DISC_ACK:
+			var discAckMsg model.DisconnectAckMessage
+			if err := json.Unmarshal(data, &discAckMsg); err != nil {
+				log.Error("Error parsing ClientDisconnectAck:", err)
+			} else {
+				controller.HandleDisconnectAckMessage(discAckMsg, client)
+			}
 		default:
 			log.Error("Unknown message type:", msg.GetMessageType())
 		}

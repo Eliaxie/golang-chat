@@ -56,5 +56,13 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	} else {
 		c.appendSortedPending(textMessage, c.Model.Myself)
 	}
-	c.multicastMessage(textMessage, c.Model.Groups[group])
+
+	activeClients := make([]model.Client, 0)
+	for _, client := range c.Model.Groups[group] {
+		if c.Model.Clients[client] {
+			activeClients = append(activeClients, client)
+		}
+	}
+
+	c.multicastMessage(textMessage, activeClients)
 }

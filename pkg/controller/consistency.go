@@ -52,16 +52,25 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 	c.Model.GroupsVectorClocks[message.Group].Clock[c.Model.Myself.Proc_id]++
 
 	// multicast message ack to all group members
-	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
-	c.multicastMessage(model.MessageAck{
-		BaseMessage: model.BaseMessage{MessageType: model.MESSAGE_ACK},
-		Group:       message.Group, Reference: ScalarClock}, c.Model.Groups[message.Group])
+	scalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
 
-	if c.Model.MessageAcks[message.Group][ScalarClock] == nil {
-		c.Model.MessageAcks[message.Group][ScalarClock] = map[string]bool{}
+	activeClients := make([]model.Client, 0)
+	for _, groupMember := range c.Model.Groups[message.Group] {
+		if c.Model.Clients[groupMember] {
+			activeClients = append(activeClients, groupMember)
+		}
 	}
 
-	c.Model.MessageAcks[message.Group][ScalarClock][client.Proc_id] = true
+	c.multicastMessage(model.MessageAck{
+		BaseMessage: model.BaseMessage{MessageType: model.MESSAGE_ACK},
+		Group:       message.Group, Reference: scalarClock}, activeClients)
+
+	// ensure the message ack map is initialized
+	if c.Model.MessageAcks[message.Group][scalarClock] == nil {
+		c.Model.MessageAcks[message.Group][scalarClock] = map[string]bool{}
+	}
+	// mark the message sender as acked
+	c.Model.MessageAcks[message.Group][scalarClock][client.Proc_id] = true
 	return c.tryAcceptTopGlobals(message.Group)
 }
 
@@ -89,10 +98,9 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 	// inner functions that checks if all acks for a message have been received
 	checkAcks := func(pendingMessage model.PendingMessage) bool {
 		groupMembers := c.Model.Groups[group]
-		receivedAcks := c.Model.MessageAcks[group][pendingMessage.ScalarClock]
-		if len(receivedAcks) == len(groupMembers)-1 {
-			// for each group member check if an ack has been received
-			for _, groupMember := range groupMembers {
+		for _, groupMember := range groupMembers {
+			if c.Model.Clients[groupMember] {
+				// group member is active
 				if groupMember.Proc_id == c.Model.Myself.Proc_id {
 					continue
 				}
@@ -100,9 +108,8 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 					return false
 				}
 			}
-			return true
 		}
-		return false
+		return true
 	}
 
 	// try accepting pending messages until one is not accepted

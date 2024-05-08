@@ -91,11 +91,13 @@ type MessageAck struct {
 
 type ClientDisconnectMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
+	Group    Group  `json:"group"`    // group from which client disconnected
+	ClientID string `json:"clientId"` // client that disconnected
 }
 
 type DisconnectAckMessage struct {
 	BaseMessage
+	Group    Group  `json:"group"`
 	ClientID string `json:"clientId"`
 }
 
@@ -155,14 +157,14 @@ type Model struct {
 	ClientWs map[string]*websocket.Conn
 	// map client_endpoint -> client (before client init)
 	PendingClients  map[string]struct{}
-	Clients         map[Client]bool
+	Clients         map[Client]bool // map client -> bool (false if client is disconnected or not in the map)
 	PendingMessages map[Group][]PendingMessage
 	// group -> scalarClock -> array proc_id from which acks were received
 	MessageAcks    map[Group]map[ScalarClockToProcId]map[string]bool
 	StableMessages map[Group][]StableMessages
 
-	ActiveWindows      map[Group]map[string]struct{} // maps group -> active clients
 	DisconnectionAcks  map[Group]map[string]struct{} // maps group -> clients that sent back an ack
+	DisconnectionLocks map[Group]*sync.Mutex         // locks for when we are waiting for acks
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock

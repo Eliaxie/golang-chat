@@ -25,51 +25,66 @@ func (c *Controller) AddNewConnections(connection []string) {
 	}
 }
 
-func (c *Controller) DisconnectClient(client model.Client) {
+func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
+	log.Infoln("Lost connection to client: ", disconnectedClient.ConnectionString)
+
+	// actions to take regardless of the consistency model
 
 	for group, clients := range c.Model.Groups {
-		for index, _client := range clients {
-			if _client == client {
+		for _, _client := range clients {
+			if _client == disconnectedClient {
 				// todo: think about group locks here
 				switch c.Model.GroupsConsistency[group] {
 
 				case model.GLOBAL:
-					// remove the client from the active window
-					delete(c.Model.ActiveWindows[group], client.Proc_id) //todo: check if this is correct before lock
-					// todo: stop sending messages (locks?)
-					clientsToNotify := make([]model.Client, len(clients))
-					copy(clientsToNotify, clients)
-					// remove all non active clients from the list of clients to notify
-					for i, client := range clientsToNotify {
-						if _, ok := c.Model.ActiveWindows[group][client.Proc_id]; !ok {
-							clientsToNotify = append(clientsToNotify[:i], clientsToNotify[i+1:]...)
+					c.Model.Clients[disconnectedClient] = false
+
+					// todo: stop sending messages (locks?) and modifiend group data
+					c.Model.GroupsLocks[group].Lock()
+					clientsToNotify := make([]model.Client, 0)
+					for _, activeClient := range c.Model.Groups[group] {
+						if c.Model.Clients[activeClient] {
+							clientsToNotify = append(clientsToNotify, activeClient)
 						}
 					}
-					//TODO: CHECK IF ACTIVE WINDOWS MAY BE A MAP TO CLIENTS INSTEAD OF STRINGS
-
-					// send a message CLIENT_DISCONNECTED to all the clients in the group that the client has disconnected
-					c.multicastMessage(model.ClientDisconnectMessage{BaseMessage: model.BaseMessage{MessageType: model.CLIENT_DISC}, ClientID: client.Proc_id}, clientsToNotify)
 
 					// initiate the disconnection ack array
 					acks := make(map[string]struct{})
 					c.Model.DisconnectionAcks[group] = acks
+					c.Model.DisconnectionLocks[group] = &sync.Mutex{}
+
+					// send a message CLIENT_DISCONNECTED to all active clients
+					c.multicastMessage(model.ClientDisconnectMessage{BaseMessage: model.BaseMessage{MessageType: model.CLIENT_DISC},
+						Group: group, ClientID: disconnectedClient.Proc_id}, clientsToNotify)
+
 					// wait for acks from all the clients
-					for client, _ := range c.Model.ActiveWindows[group] {
-						_, ok := acks[client]
-						if !ok {
-							// wait for the ack
-							time.Sleep(100 * time.Millisecond)
-							//todo: timeout?
+					for len(acks) < len(clientsToNotify) {
+						for _, activeClient := range clientsToNotify {
+							acknowledged := false
+							inActiveWindow := true
+							for !acknowledged && inActiveWindow {
+								c.Model.DisconnectionLocks[group].Lock()
+								_, acknowledged = acks[activeClient.Proc_id]
+								_, inActiveWindow = c.Model.Clients[activeClient]
+								c.Model.DisconnectionLocks[group].Unlock()
+								time.Sleep(100 * time.Millisecond)
+							}
+							log.Debugln("exit ack loop for ", activeClient.Proc_id, " acknowledged: ", acknowledged, " inActiveWindow: ", inActiveWindow)
 						}
 					}
 
-					// if in majority partition, remove the client from ACTIVE_WINDOW
-					// ...
+					// check if majority partitioned
+					if len(acks)+1 > (len(c.Model.Groups[group]))/2 {
+						log.Infoln("Group ", group.Name, " majority partitioned after client ", disconnectedClient.Proc_id, " disconnected")
+						// try to accept the messages with the new active window
+						c.tryAcceptTopGlobals(group)
+					}
 					// resume sending messages (locks?)
+					c.Model.GroupsLocks[group].Unlock()
 				case model.CAUSAL:
-					delete(controller.Model.Clients, client)
+					delete(controller.Model.Clients, disconnectedClient)
 				default:
-					delete(controller.Model.Clients, client)
+					delete(controller.Model.Clients, disconnectedClient)
 				}
 
 				break
@@ -162,11 +177,6 @@ func (c *Controller) createGroup(group model.Group, consistencyModel model.Consi
 		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
 		// Intialize the map for message acks for the group
 		c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
-		// put a copy of clients in the active window
-		c.Model.ActiveWindows[group] = make(map[string]struct{})
-		for _, client := range clients {
-			c.Model.ActiveWindows[group][client.Proc_id] = struct{}{}
-		}
 	}
 	return group
 }

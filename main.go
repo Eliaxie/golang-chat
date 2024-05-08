@@ -49,8 +49,8 @@ func main() {
 
 		// groups
 		Groups:             make(map[model.Group][]model.Client),
-		ActiveWindows:      make(map[model.Group]map[string]struct{}),
 		DisconnectionAcks:  make(map[model.Group]map[string]struct{}),
+		DisconnectionLocks: make(map[model.Group]*sync.Mutex),
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsLocks:        make(map[model.Group]*sync.Mutex),

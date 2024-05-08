@@ -98,3 +98,17 @@ func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model
 	}
 	c.Model.GroupsLocks[messageAck.Group].Unlock()
 }
+
+func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.ClientDisconnectMessage, client *model.Client) {
+	// send back acknolwedgement
+	c.SendMessage(model.DisconnectAckMessage{
+		BaseMessage: model.BaseMessage{MessageType: model.DISC_ACK},
+		Group:       clientDisconnectMsg.Group,
+		ClientID:    clientDisconnectMsg.ClientID}, *client)
+}
+
+func (c *Controller) HandleDisconnectAckMessage(disconnectAckMsg model.DisconnectAckMessage, client *model.Client) {
+	c.Model.DisconnectionLocks[disconnectAckMsg.Group].Lock()
+	c.Model.DisconnectionAcks[disconnectAckMsg.Group][client.Proc_id] = struct{}{}
+	c.Model.DisconnectionLocks[disconnectAckMsg.Group].Unlock()
+}
