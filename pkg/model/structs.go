@@ -168,7 +168,7 @@ type Model struct {
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
-	GroupsLocks        map[Group]*sync.Mutex
+	GroupsLocks        map[Group]*sync.Mutex // groups need to be locked when we are modifying Groups, Clients, VectorClocks, PendingMessages, StableMessages. Groups are also locked when a disconnection is happening or if the group is not in a majority partition
 }
 
 const (

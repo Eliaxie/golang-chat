@@ -37,9 +37,16 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 				switch c.Model.GroupsConsistency[group] {
 
 				case model.GLOBAL:
-					c.Model.Clients[disconnectedClient] = false
+					// if client is already marked as disconnected, do nothing
+					if !c.Model.Clients[disconnectedClient] {
+						break
+					}
 
-					// todo: stop sending messages (locks?) and modifiend group data
+					c.Model.DisconnectionLocks[group].Lock()
+					c.Model.Clients[disconnectedClient] = false
+					c.Model.DisconnectionLocks[group].Unlock()
+
+					// todo: stop sending messages (locks?) and modifing group data
 					c.Model.GroupsLocks[group].Lock()
 					clientsToNotify := make([]model.Client, 0)
 					for _, activeClient := range c.Model.Groups[group] {

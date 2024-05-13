@@ -44,6 +44,7 @@ func (c *Controller) BroadcastMessage(text string) {
 }
 
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
+	c.Model.GroupsLocks[group].Lock()
 	vectorClock := c.Model.GroupsVectorClocks[group]
 	vectorClock.Clock[c.Model.Myself.Proc_id]++
 	textMessage := model.TextMessage{
@@ -63,6 +64,6 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 			activeClients = append(activeClients, client)
 		}
 	}
-
+	c.Model.GroupsLocks[group].Unlock()
 	c.multicastMessage(textMessage, activeClients)
 }
