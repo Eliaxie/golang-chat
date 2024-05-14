@@ -55,7 +55,7 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content, Client: c.Model.Myself})
 		c.Notifier.Notify(group)
 	} else {
-		c.appendSortedPending(textMessage, c.Model.Myself)
+		c.appendMsgToSortedPending(textMessage, c.Model.Myself)
 	}
 
 	activeClients := make([]model.Client, 0)

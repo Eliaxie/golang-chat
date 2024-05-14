@@ -60,9 +60,22 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 					c.Model.DisconnectionAcks[group] = acks
 					c.Model.DisconnectionLocks[group] = &sync.Mutex{}
 
+					// get all pending messages for group sent by disconnected client
+					disconnectedPendings := []model.PendingMessage{}
+					for _, pendingMessage := range c.Model.PendingMessages[group] {
+						if pendingMessage.Client == disconnectedClient {
+							disconnectedPendings = append(disconnectedPendings, pendingMessage)
+						}
+					}
+
 					// send a message CLIENT_DISCONNECTED to all active clients
-					c.multicastMessage(model.ClientDisconnectMessage{BaseMessage: model.BaseMessage{MessageType: model.CLIENT_DISC},
-						Group: group, ClientID: disconnectedClient.Proc_id}, clientsToNotify)
+					c.multicastMessage(
+						model.ClientDisconnectMessage{
+							BaseMessage:     model.BaseMessage{MessageType: model.CLIENT_DISC},
+							Group:           group,
+							Client:          model.SerializedClient{Proc_id: disconnectedClient.Proc_id, HostName: disconnectedClient.ConnectionString},
+							PendingMessages: disconnectedPendings,
+						}, clientsToNotify)
 
 					// wait for acks from all the clients
 					for len(acks) < len(clientsToNotify) {

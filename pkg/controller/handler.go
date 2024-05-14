@@ -100,11 +100,71 @@ func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model
 }
 
 func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.ClientDisconnectMessage, client *model.Client) {
+
+	disconnectedClient := model.Client{Proc_id: clientDisconnectMsg.Client.Proc_id, ConnectionString: clientDisconnectMsg.Client.HostName}
+
+	// remove client from active window
+	c.Model.DisconnectionLocks[clientDisconnectMsg.Group].Lock()
+	c.Model.Clients[disconnectedClient] = false
+	c.Model.DisconnectionLocks[clientDisconnectMsg.Group].Unlock()
+
+	// add all new pending messages
+	c.Model.GroupsLocks[clientDisconnectMsg.Group].Lock()
+	var pendingsToKeep []model.PendingMessage
+	intersection := make(map[string]struct{})
+	for _, message := range c.Model.PendingMessages[clientDisconnectMsg.Group] {
+		// if not the client that disconnected
+		if message.Client.Proc_id != disconnectedClient.Proc_id {
+			pendingsToKeep = append(pendingsToKeep, message)
+			continue
+		}
+		// if the client that disconnected check if the message is in the newMessages
+		for _, newPending := range clientDisconnectMsg.PendingMessages {
+			if newPending.Content.UUID == message.Content.UUID {
+				pendingsToKeep = append(pendingsToKeep, message)
+				intersection[newPending.Content.UUID] = struct{}{}
+				break
+			}
+		}
+	}
+	c.Model.PendingMessages[clientDisconnectMsg.Group] = pendingsToKeep
+
+	for _, newPending := range clientDisconnectMsg.PendingMessages {
+		// if pending already in intersection do nothing ( message was already received)
+		if _, found := intersection[newPending.Content.UUID]; found {
+			continue
+		}
+		c.appendSortedPending(newPending, clientDisconnectMsg.Group)
+
+		// increment own clock
+		c.Model.GroupsVectorClocks[clientDisconnectMsg.Group].Clock[c.Model.Myself.Proc_id]++
+
+		// send acks if the message is new
+		activeClients := make([]model.Client, 0)
+		for _, groupMember := range c.Model.Groups[clientDisconnectMsg.Group] {
+			if c.Model.Clients[groupMember] {
+				activeClients = append(activeClients, groupMember)
+			}
+		}
+
+		c.multicastMessage(model.MessageAck{
+			BaseMessage: model.BaseMessage{MessageType: model.MESSAGE_ACK},
+			Group:       clientDisconnectMsg.Group, Reference: newPending.ScalarClock}, activeClients)
+
+		// ensure the message ack map is initialized
+		if c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] == nil {
+			c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] = map[string]bool{}
+		}
+		// mark the message sender as acked
+		c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock][client.Proc_id] = true
+		c.tryAcceptTopGlobals(clientDisconnectMsg.Group)
+	}
+	c.Model.GroupsLocks[clientDisconnectMsg.Group].Unlock()
 	// send back acknolwedgement
 	c.SendMessage(model.DisconnectAckMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.DISC_ACK},
 		Group:       clientDisconnectMsg.Group,
-		ClientID:    clientDisconnectMsg.ClientID}, *client)
+		ClientID:    disconnectedClient.Proc_id}, *client)
 }
 
 func (c *Controller) HandleDisconnectAckMessage(disconnectAckMsg model.DisconnectAckMessage, client *model.Client) {

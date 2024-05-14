@@ -46,8 +46,7 @@ func (c *Controller) acceptCasualMessage(message model.TextMessage, client model
 }
 
 func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client model.Client) bool {
-
-	c.appendSortedPending(message, client)
+	c.appendMsgToSortedPending(message, client)
 	// increment own clock
 	c.Model.GroupsVectorClocks[message.Group].Clock[c.Model.Myself.Proc_id]++
 
@@ -74,22 +73,27 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 	return c.tryAcceptTopGlobals(message.Group)
 }
 
-func (c *Controller) appendSortedPending(message model.TextMessage, client model.Client) {
+func (c *Controller) appendMsgToSortedPending(message model.TextMessage, client model.Client) model.PendingMessage {
 	ScalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
 	pendingMessage := model.PendingMessage{Content: message.Content, Client: client,
 		ScalarClock: ScalarClock}
+
+	c.appendSortedPending(pendingMessage, message.Group)
+	return pendingMessage
+}
+
+func (c *Controller) appendSortedPending(message model.PendingMessage, group model.Group) {
 	// find the index where to insert the message
-	pendingMessages := c.Model.PendingMessages[message.Group]
+	pendingMessages := c.Model.PendingMessages[group]
 	index := sort.Search(len(pendingMessages), func(i int) bool {
-		if pendingMessages[i].ScalarClock.Clock == pendingMessage.ScalarClock.Clock {
-			return pendingMessages[i].ScalarClock.Proc_id > pendingMessage.ScalarClock.Proc_id
+		if pendingMessages[i].ScalarClock.Clock == message.ScalarClock.Clock {
+			return pendingMessages[i].ScalarClock.Proc_id > message.ScalarClock.Proc_id
 		}
-		return pendingMessages[i].ScalarClock.Clock > message.VectorClock.Clock[client.Proc_id]
+		return pendingMessages[i].ScalarClock.Clock > message.ScalarClock.Clock
 	})
 
 	// insert the message
-	c.Model.PendingMessages[message.Group] = append(pendingMessages[:index], append([]model.PendingMessage{pendingMessage}, pendingMessages[index:]...)...)
-
+	c.Model.PendingMessages[group] = append(pendingMessages[:index], append([]model.PendingMessage{message}, pendingMessages[index:]...)...)
 }
 
 func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {

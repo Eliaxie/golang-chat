@@ -91,8 +91,9 @@ type MessageAck struct {
 
 type ClientDisconnectMessage struct {
 	BaseMessage
-	Group    Group  `json:"group"`    // group from which client disconnected
-	ClientID string `json:"clientId"` // client that disconnected
+	Group           Group            `json:"group"`    // group from which client disconnected
+	Client          SerializedClient `json:"clientId"` // client that disconnected
+	PendingMessages []PendingMessage `json:"pendingMessages"`
 }
 
 type DisconnectAckMessage struct {
@@ -164,7 +165,7 @@ type Model struct {
 	StableMessages map[Group][]StableMessages
 
 	DisconnectionAcks  map[Group]map[string]struct{} // maps group -> clients that sent back an ack
-	DisconnectionLocks map[Group]*sync.Mutex         // locks for when we are waiting for acks
+	DisconnectionLocks map[Group]*sync.Mutex         // locks for when we are waiting for acks and accesing Client Array
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
