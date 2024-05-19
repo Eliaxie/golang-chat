@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"hash/fnv"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -39,4 +40,10 @@ func LogInit(logLevel log.Level) {
 
 	// Only log the warning severity or above.
 	log.SetLevel(logLevel)
+}
+
+func Hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }

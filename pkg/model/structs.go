@@ -74,12 +74,14 @@ type TextMessage struct {
 
 type ConnectionInitMessage struct {
 	BaseMessage
-	ClientID   string `json:"clientId"`
-	ServerPort string `json:"serverPort"`
+	ClientID     string `json:"clientId"`
+	ServerPort   string `json:"serverPort"`
+	Reconnection bool   `json:"reconnect"`
 }
 
 type ConnectionInitResponseMessage struct {
 	BaseMessage
+	Refused  bool   `json:"refused"`
 	ClientID string `json:"clientId"`
 }
 
@@ -104,12 +106,18 @@ type DisconnectAckMessage struct {
 
 type ConnectionRestoreMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
+	StableMessages            [][]StableMessage    `json:"stableMessages"`
+	PendingMessages           [][]PendingMessage   `json:"pendingMessages"`
+	Groups                    []Group              `json:"group"`
+	SerializedClientsInGroups [][]SerializedClient `json:"serializedClientsInGroups"`
+	ConsistencyModel          []ConsistencyModel   `json:"consistencyModel"`
+
+	//Causal
+	GroupsVectorClocks []VectorClock `json:"groupsVectorClocks"`
 }
 
 type ConnectionRestoreResponseMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
 }
 
 type Client struct {
@@ -144,7 +152,7 @@ type PendingMessage struct {
 	ScalarClock ScalarClockToProcId
 }
 
-type StableMessages struct {
+type StableMessage struct {
 	Client  Client
 	Content UniqueMessage
 }
@@ -162,14 +170,17 @@ type Model struct {
 	PendingMessages map[Group][]PendingMessage
 	// group -> scalarClock -> array proc_id from which acks were received
 	MessageAcks    map[Group]map[ScalarClockToProcId]map[string]bool
-	StableMessages map[Group][]StableMessages
+	StableMessages map[Group][]StableMessage
 
 	DisconnectionAcks  map[Group]map[string]struct{} // maps group -> clients that sent back an ack
 	DisconnectionLocks map[Group]*sync.Mutex         // locks for when we are waiting for acks and accesing Client Array
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
-	GroupsLocks        map[Group]*sync.Mutex // groups need to be locked when we are modifying Groups, Clients, VectorClocks, PendingMessages, StableMessages. Groups are also locked when a disconnection is happening or if the group is not in a majority partition
+	GroupsLocks        map[Group]*sync.Mutex // groups need to be locked when we are modifying Groups, Clients, VectorClocks, PendingMessages, StableMessages. Groups are also locked when a disconnection is happening or if the group is not in a majority partition. Groups are also locked when a reconnection is happening.
+
+	MessageExitBuffer     map[Client][][]byte
+	MessageExitBufferLock *sync.Mutex
 }
 
 const (

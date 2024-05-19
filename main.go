@@ -43,7 +43,7 @@ func main() {
 		// messages that have been received or sent but not yet trasmitted to the app level
 		PendingMessages: make(map[model.Group][]model.PendingMessage),
 		// messages shown to the users
-		StableMessages: make(map[model.Group][]model.StableMessages),
+		StableMessages: make(map[model.Group][]model.StableMessage),
 		// list of acks for each message
 		MessageAcks: make(map[model.Group]map[model.ScalarClockToProcId]map[string]bool),
 
@@ -54,6 +54,9 @@ func main() {
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsLocks:        make(map[model.Group]*sync.Mutex),
+
+		MessageExitBuffer:     make(map[model.Client][][]byte),
+		MessageExitBufferLock: &sync.Mutex{},
 	}
 
 	// initialize notifier
@@ -61,6 +64,8 @@ func main() {
 
 	_controller := controller.Controller{Model: model, Notifier: notifier}
 
+	go _controller.StartRetryConnections()
+	go _controller.StartRetryMessages()
 	// starts view
 	view.Start(&_controller)
 

@@ -18,34 +18,45 @@ func InitWebServer(port string, c *Controller) {
 }
 
 func (c *Controller) multicastMessage(message model.Message, clients []model.Client) {
-	data, _ := json.Marshal(message)
 	// print list of clients
 	log.Debugln("Multicasting message to clients:")
 	log.Debugln(clients)
 	for _, client := range clients {
 		if client != c.Model.Myself {
-			sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
+			c.SendMessage(message, client)
 		}
 	}
 }
 
-func (c *Controller) addNewConnectionSlave(origin string, serverAddress string) *model.Client {
+func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, reconnection bool) (*model.Client, error) {
 	ws, err := websocket.Dial(serverAddress, "ws", origin)
 	if err != nil {
-		log.Fatal(err)
+		log.Trace("Error dialing:", err)
+		return nil, err
 	}
+
 	client := &model.Client{Proc_id: "", ConnectionString: serverAddress}
 	c.Model.PendingClients[serverAddress] = struct{}{}
 	c.Model.ClientWs[serverAddress] = ws
+	c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
 
-	initializeClient(c.Model.Myself.Proc_id, client)
+	initializeClient(c.Model.Myself.Proc_id, client, reconnection)
 	go receiveLoop(ws, client)
-	return client
+	return client, nil
 }
 
-func sendMessageSlave(ws *websocket.Conn, msg []byte) error {
-	log.Debugln("Slave: Sending message:", string(msg))
-	return websocket.Message.Send(ws, msg)
+func sendMessageSlave(ws *websocket.Conn, client model.Client) error {
+	controller.Model.MessageExitBufferLock.Lock()
+	defer controller.Model.MessageExitBufferLock.Unlock()
+	for _, msg := range controller.Model.MessageExitBuffer[client] {
+		if err := websocket.Message.Send(ws, msg); err != nil {
+			log.Errorln(err)
+			return err
+		}
+		controller.Model.MessageExitBuffer[client] = controller.Model.MessageExitBuffer[client][1:]
+		log.Debugln("Slave: Sent message:", string(msg))
+	}
+	return nil
 }
 
 func startServer(port string) {

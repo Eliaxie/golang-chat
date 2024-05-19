@@ -2,8 +2,11 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/notify"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,18 +18,83 @@ type Controller struct {
 	Notifier *notify.Notifier
 }
 
-func (c *Controller) AddNewConnection(connection string) model.Client {
-	return *c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection)
+func (c *Controller) AddNewConnection(connection string) (model.Client, error) {
+	resp, err := c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection, false)
+	if err == nil {
+		return *resp, nil
+	}
+	return model.Client{}, err
+}
+
+func (c *Controller) Reconnect(connection string) (model.Client, error) {
+	resp, err := c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection, true)
+	if err == nil {
+		return *resp, nil
+	}
+	return model.Client{}, err
+}
+
+func (c *Controller) syncReconnectedClient(client model.Client, reconnection bool) {
+	stables := make(map[model.Group][]model.StableMessage)
+	pending := make(map[model.Group][]model.PendingMessage)
+	for group, clients := range c.Model.Groups {
+		if slices.Contains(clients, client) {
+			c.Model.GroupsLocks[group].Lock()
+			stables[group] = c.Model.StableMessages[group]
+			pending[group] = c.Model.PendingMessages[group]
+		}
+	}
+	log.Trace("Sending connection restore message to ", client.Proc_id)
+
+	groups := make([]model.Group, len(stables))
+	serializedStables := make([][]model.StableMessage, len(stables))
+	serializedPendings := make([][]model.PendingMessage, len(stables))
+	serializedVectorClocks := make([]model.VectorClock, len(stables))
+	serializedClientsInGroups := make([][]model.SerializedClient, len(stables))
+	consistencyModels := make([]model.ConsistencyModel, len(stables))
+	i := 0
+	for group := range stables {
+		groups[i] = group
+		consistencyModels[i] = c.Model.GroupsConsistency[group]
+		serializedStables[i] = stables[group]
+		serializedPendings[i] = pending[group]
+		serializedVectorClocks[i] = c.Model.GroupsVectorClocks[group]
+		if !reconnection {
+			for _, client := range c.Model.Groups[group] {
+				serializedClientsInGroups[i] = append(serializedClientsInGroups[i], model.SerializedClient{Proc_id: client.Proc_id, HostName: client.ConnectionString})
+			}
+		}
+		i++
+	}
+
+	c.SendMessage(model.ConnectionRestoreMessage{
+		BaseMessage:               model.BaseMessage{MessageType: model.CONN_RESTORE},
+		StableMessages:            serializedStables,
+		PendingMessages:           serializedPendings,
+		ConsistencyModel:          consistencyModels,
+		Groups:                    groups,
+		SerializedClientsInGroups: serializedClientsInGroups,
+		GroupsVectorClocks:        serializedVectorClocks,
+	}, client)
+
+	controller.Model.Clients[client] = true
+
+	for group, clients := range c.Model.Groups {
+		if slices.Contains(clients, client) {
+			c.Model.GroupsLocks[group].Unlock()
+		}
+	}
+
 }
 
 func (c *Controller) AddNewConnections(connection []string) {
 	for _, conn := range connection {
-		c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", conn)
+		c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", conn, false)
 	}
 }
 
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
-	log.Infoln("Lost connection to client: ", disconnectedClient.ConnectionString)
+	fmt.Println("Lost connection to client: ", disconnectedClient.ConnectionString)
 
 	// actions to take regardless of the consistency model
 
@@ -102,9 +170,9 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 					// resume sending messages (locks?)
 					c.Model.GroupsLocks[group].Unlock()
 				case model.CAUSAL:
-					delete(controller.Model.Clients, disconnectedClient)
+					controller.Model.Clients[disconnectedClient] = false
 				default:
-					delete(controller.Model.Clients, disconnectedClient)
+					controller.Model.Clients[disconnectedClient] = false
 				}
 
 				break
@@ -117,6 +185,57 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 func (c *Controller) StartServer(port string) {
 	c.Model.ServerPort = port
 	InitWebServer(port, c)
+}
+
+func (c *Controller) StartRetryConnections() {
+	for {
+		for client, connected := range c.Model.Clients {
+
+			// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
+			if !connected && strings.Compare(c.Model.Myself.Proc_id, client.Proc_id) > 0 {
+				log.Trace("Retrying connection to ", client.ConnectionString)
+				client, err := c.Reconnect(client.ConnectionString)
+				if err != nil {
+					log.Trace("Failed to connect to ", client.ConnectionString)
+				}
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func (c *Controller) StartRetryMessages() {
+	for {
+		for client, _ := range c.Model.MessageExitBuffer {
+			c.Model.MessageExitBufferLock.Lock()
+			oldLen := len(c.Model.MessageExitBuffer[client])
+			oldMsg := []byte{}
+			if oldLen != 0 {
+				oldMsg = c.Model.MessageExitBuffer[client][0]
+			}
+			c.Model.MessageExitBufferLock.Unlock()
+			if oldLen == 0 {
+				continue
+			}
+
+			time.Sleep(100 * time.Millisecond)
+			retryNeeded := false
+
+			c.Model.MessageExitBufferLock.Lock()
+			newLen := len(c.Model.MessageExitBuffer[client])
+			if newLen >= oldLen {
+				if slices.Compare(oldMsg, c.Model.MessageExitBuffer[client][0]) == 0 {
+					log.Trace("Stale messages found in MessageExitBuffer, retrying... ", client.ConnectionString)
+					retryNeeded = true
+				}
+			}
+			c.Model.MessageExitBufferLock.Unlock()
+			if retryNeeded {
+				sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 // Tries to accept the received message. Returns true if the buffer is empty, false otherwise
@@ -138,8 +257,6 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 		newMessage = c.tryAcceptCasualMessages(message.Group)
 	case model.GLOBAL:
 		newMessage = c.tryAcceptGlobalMessages(message, client)
-	case model.LINEARIZABLE:
-		newMessage = c.tryAcceptLinearizableMessages(message, client)
 	case model.FIFO:
 		newMessage = c.tryAcceptFIFOMessages(message, client)
 	default:

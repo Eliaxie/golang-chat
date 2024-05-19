@@ -9,37 +9,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// Only send function not checking if client is in the model
-func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
-	data, _ := json.Marshal(message)
-	log.Debugln(string(data))
-	sendMessageSlave(controller.Model.ClientWs[client.ConnectionString], data)
-}
-
 func (c *Controller) SendMessage(message model.Message, client model.Client) {
-	if !controller.Model.Clients[client] {
-		return
+	data, error := json.Marshal(message)
+	if error != nil {
+		log.Fatal("Error marshalling message: ", error)
 	}
-	data, _ := json.Marshal(message)
-	log.Debugln(string(data))
-	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
-}
-
-func (c *Controller) SendTextMessage(text string, client model.Client) {
-	if !c.Model.Clients[client] {
-		return
-	}
-	msg := model.TextMessage{
-		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
-	data, _ := json.Marshal(msg)
-	println("Sending message:", string(data))
-	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
-}
-
-func (c *Controller) BroadcastMessage(text string) {
-	for client := range c.Model.Clients {
-		c.SendTextMessage(text, client)
+	if controller.Model.Clients[client] || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
+		c.Model.MessageExitBufferLock.Lock()
+		c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], data)
+		c.Model.MessageExitBufferLock.Unlock()
+		log.Debugln(string(data))
+		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
+	} else {
+		log.Fatal("Error sending message: trying to send message to a client that is not connected. This should be handled above")
 	}
 }
 
@@ -52,7 +34,7 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
 	if c.Model.GroupsConsistency[group] != model.GLOBAL {
-		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content, Client: c.Model.Myself})
+		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself})
 		c.Notifier.Notify(group)
 	} else {
 		c.appendMsgToSortedPending(textMessage, c.Model.Myself)

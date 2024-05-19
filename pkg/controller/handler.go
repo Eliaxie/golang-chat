@@ -2,38 +2,128 @@ package controller
 
 import (
 	"golang-chat/pkg/model"
+	"slices"
 	"strings"
+	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
+var clientReconnectionSynchronizationLock sync.Mutex
 
+func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
+	// check if a client is reconnecting
+	reconnection := false
 	oldConnectionString := client.ConnectionString
-	client.Proc_id = connInitMsg.ClientID
-	client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].Request().Host, ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
+	for _client := range c.Model.Clients {
+		if _client.Proc_id == connInitMsg.ClientID {
+			client = &_client
+			reconnection = true
+			break
+		}
+	}
+
+	// check if someone is trying to reconnect to me but I don't know him. I want to be the one who reconnects.
+	if connInitMsg.Reconnection && !reconnection {
+		controller.SendMessage(model.ConnectionInitResponseMessage{
+			BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
+			ClientID:    c.Model.Myself.Proc_id,
+			Refused:     true,
+		}, *client)
+		return
+	}
+
+	log.Debug("Connecting client: ", connInitMsg.ClientID, " ", client.ConnectionString, " Reconnection: ", reconnection, " connectionInit.Reconnection: ", connInitMsg.Reconnection)
+	if !reconnection {
+		client.Proc_id = connInitMsg.ClientID
+		client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].Request().Host, ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
+		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
+	}
 	controller.Model.ClientWs[client.ConnectionString] = controller.Model.ClientWs[oldConnectionString]
 	delete(controller.Model.ClientWs, oldConnectionString)
 	delete(controller.Model.PendingClients, oldConnectionString)
-
-	controller.Model.Clients[*client] = true
+	if !reconnection {
+		controller.Model.Clients[*client] = true
+	}
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
 		ClientID:    c.Model.Myself.Proc_id,
 	}, *client)
+
+	// If the client hasn't crashed I don't need to sync it
+	if reconnection && !connInitMsg.Reconnection {
+		c.syncReconnectedClient(*client, connInitMsg.Reconnection)
+	}
 }
 
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client *model.Client) {
+	if connInitRespMsg.Refused {
+		log.Debug("Connection refused")
+		delete(controller.Model.PendingClients, client.ConnectionString)
+		return
+	}
 	delete(controller.Model.PendingClients, client.ConnectionString)
 	client.Proc_id = connInitRespMsg.ClientID
 	controller.Model.Clients[*client] = true
 }
 
 func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.ConnectionRestoreMessage, client *model.Client) {
-	panic("unimplemented")
+	clientReconnectionSynchronizationLock.Lock()
+	for i, group := range connRestoreMsg.Groups {
+		switch connRestoreMsg.ConsistencyModel[i] {
+		case model.CAUSAL:
+			if c.Model.Groups[group] == nil {
+				for _, _remoteClient := range connRestoreMsg.SerializedClientsInGroups[i] {
+					for localClient, active := range c.Model.Clients {
+						if localClient.Proc_id == _remoteClient.Proc_id {
+							if !active {
+								c.AddNewConnection(_remoteClient.HostName)
+							}
+						}
+					}
+				}
+				c.createGroup(group, model.CAUSAL, []model.Client{*client})
+			}
+			for _, message := range connRestoreMsg.StableMessages[i] {
+				if !slices.Contains(c.Model.StableMessages[group], message) {
+					c.Model.StableMessages[group] = append(c.Model.StableMessages[group], message)
+				}
+			}
+			for proc := range c.Model.GroupsVectorClocks[group].Clock {
+				if connRestoreMsg.GroupsVectorClocks[i].Clock[proc] > c.Model.GroupsVectorClocks[group].Clock[proc] {
+					c.Model.GroupsVectorClocks[group].Clock[proc] = connRestoreMsg.GroupsVectorClocks[i].Clock[proc]
+				}
+			}
+			for _, message := range connRestoreMsg.PendingMessages[i] {
+				alreadyInPending := false
+				for _, pending := range c.Model.PendingMessages[group] {
+					if pending.Content.UUID == message.Content.UUID {
+						alreadyInPending = true
+						break
+					}
+				}
+				if !alreadyInPending {
+					c.appendSortedPending(message, group)
+				}
+			}
+			c.tryAcceptCasualMessages(group)
+		case model.GLOBAL:
+			// not implemented
+		default:
+		}
+	}
+
+	clientReconnectionSynchronizationLock.Unlock()
+
+	c.SendMessage(model.ConnectionRestoreResponseMessage{
+		BaseMessage: model.BaseMessage{MessageType: model.CONN_RESTORE_RESPONSE},
+	}, *client)
+
 }
 
 func (c *Controller) HandleConnectionRestoreResponseMessage(connRestoreRespMsg model.ConnectionRestoreResponseMessage, client *model.Client) {
-	panic("unimplemented")
+	// empty for now
 }
 
 func (c *Controller) HandleSyncPeersMessage(syncPeersMsg model.SyncPeersMessage, client *model.Client) {
@@ -70,7 +160,11 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 			continue
 		}
 
-		clientConnection := c.AddNewConnection(serializedClient.HostName)
+		clientConnection, err := c.AddNewConnection(serializedClient.HostName)
+		if err != nil {
+			log.Errorln("Error adding new connection", err)
+			continue
+		}
 		clientConnection.Proc_id = serializedClient.Proc_id
 		// new client with proc_id and hostName of groupClients
 		_clients = append(_clients, clientConnection)

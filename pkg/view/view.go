@@ -104,7 +104,11 @@ func displayAddConnectionManually() {
 
 	// call the function to add the connection
 	log.Debugln(connection)
-	pendingClient := _controller.AddNewConnection(connection)
+	pendingClient, err := _controller.AddNewConnection(connection)
+	if err != nil {
+		log.Errorln("Error adding new connection", err)
+		return
+	}
 	_controller.WaitForConnection(pendingClient)
 	color.Green("Connected")
 }

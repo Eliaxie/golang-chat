@@ -8,15 +8,15 @@ import (
 	"github.com/denisbrodbeck/machineid"
 )
 
-func initializeClient(proc_id string, client *model.Client) {
+func initializeClient(proc_id string, client *model.Client, reconnection bool) {
 	// Send connection init message
 	connInitMsg := model.ConnectionInitMessage{
-		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT},
-		ClientID:    proc_id,
-		ServerPort:  controller.Model.ServerPort,
+		BaseMessage:  model.BaseMessage{MessageType: model.CONN_INIT},
+		ClientID:     proc_id,
+		ServerPort:   controller.Model.ServerPort,
+		Reconnection: reconnection,
 	}
-	controller.SendInitMessage(connInitMsg, *client)
-
+	controller.SendMessage(connInitMsg, *client)
 }
 
 func (c *Controller) GenerateUniqueID() string {

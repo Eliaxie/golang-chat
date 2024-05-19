@@ -23,7 +23,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 				}
 				if everyOtherIsLower {
 					c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-						model.StableMessages{Content: pendingMessage.Content, Client: pendingMessage.Client})
+						model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
 
 					c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
 					c.Model.GroupsVectorClocks[group].Clock[proc_id]++
@@ -38,11 +38,6 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 
 func removeAtIndex[T any](s []T, index int) []T {
 	return append(s[:index], s[index+1:]...)
-}
-
-func (c *Controller) acceptCasualMessage(message model.TextMessage, client model.Client) bool {
-
-	return false
 }
 
 func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client model.Client) bool {
@@ -123,17 +118,12 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 			break
 		}
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-			model.StableMessages{Content: pendingMessage.Content, Client: pendingMessage.Client})
+			model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
 		c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
 		c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
 		hasNewMessages = isAccepted || hasNewMessages
 	}
 	return hasNewMessages
-}
-
-func (c *Controller) tryAcceptLinearizableMessages(message model.TextMessage, client model.Client) bool {
-
-	return false
 }
 
 func (c *Controller) tryAcceptFIFOMessages(message model.TextMessage, client model.Client) bool {
@@ -143,7 +133,7 @@ func (c *Controller) tryAcceptFIFOMessages(message model.TextMessage, client mod
 	for _, pendingMessage := range c.Model.PendingMessages[message.Group] {
 		newMessage = true
 		c.Model.StableMessages[message.Group] = append(c.Model.StableMessages[message.Group],
-			model.StableMessages{Content: pendingMessage.Content})
+			model.StableMessage{Content: pendingMessage.Content})
 
 	}
 	// empties the pending buffer
