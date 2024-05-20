@@ -22,8 +22,9 @@ func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
 	port := displayInsertPort()
-	_controller.StartServer(strconv.Itoa(port))
-	log.Infoln("Server started on port ", port)
+	extPort := displayInsertExtPort(port)
+	_controller.StartServer(strconv.Itoa(port), strconv.Itoa(extPort))
+	log.Infoln("Server started on port ", port, "-> ", extPort)
 	username := displayInsertUsername()
 	Proc_id := username + "-" + _controller.GenerateUniqueID()
 	_controller.Model.Myself = model.Client{Proc_id: Proc_id}
@@ -36,6 +37,15 @@ func displayInsertPort() int {
 	val, err := ReadInt()
 	if err != nil {
 		val = model.DEFAULT_PORT
+	}
+	return val
+}
+
+func displayInsertExtPort(port int) int {
+	fmt.Print("Enter external port (default: ", port, "): ")
+	val, err := ReadInt()
+	if err != nil {
+		val = port
 	}
 	return val
 }

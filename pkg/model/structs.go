@@ -159,8 +159,9 @@ type StableMessage struct {
 
 // Model
 type Model struct {
-	Myself     Client
-	ServerPort string
+	Myself        Client
+	ServerPort    string
+	ExtServerPort string
 
 	// map client_endpoint -> ws
 	ClientWs map[string]*websocket.Conn
