@@ -17,7 +17,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	oldConnectionString := client.ConnectionString
 	for _client := range c.Model.Clients {
 		if _client.Proc_id == connInitMsg.ClientID {
-			client = &_client
+			*client = _client
 			reconnection = true
 			break
 		}
@@ -45,6 +45,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	if !reconnection {
 		controller.Model.Clients[*client] = true
 	}
+
 	// Send reply INIT Message with my clientID
 	controller.SendMessage(model.ConnectionInitResponseMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
@@ -74,16 +75,25 @@ func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.Connect
 		switch connRestoreMsg.ConsistencyModel[i] {
 		case model.CAUSAL:
 			if c.Model.Groups[group] == nil {
+				groupClients := make([]model.Client, 0)
 				for _, _remoteClient := range connRestoreMsg.SerializedClientsInGroups[i] {
-					for localClient, active := range c.Model.Clients {
-						if localClient.Proc_id == _remoteClient.Proc_id {
-							if !active {
-								c.AddNewConnection(_remoteClient.HostName)
+					clientToAdd := model.Client{Proc_id: _remoteClient.Proc_id, ConnectionString: _remoteClient.HostName}
+
+					if _remoteClient.Proc_id == c.Model.Myself.Proc_id {
+						clientToAdd = model.Client{Proc_id: _remoteClient.Proc_id, ConnectionString: c.Model.Myself.ConnectionString}
+					} else {
+						for localClient, active := range c.Model.Clients {
+							if localClient.Proc_id == _remoteClient.Proc_id {
+								if !active {
+									c.AddNewConnection(_remoteClient.HostName)
+								}
+								clientToAdd = localClient
 							}
 						}
 					}
+					groupClients = append(groupClients, clientToAdd)
 				}
-				c.createGroup(group, model.CAUSAL, []model.Client{*client})
+				c.createGroup(group, model.CAUSAL, groupClients)
 			}
 			for _, message := range connRestoreMsg.StableMessages[i] {
 				if !slices.Contains(c.Model.StableMessages[group], message) {

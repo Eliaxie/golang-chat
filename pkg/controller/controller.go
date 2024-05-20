@@ -62,6 +62,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 		if !reconnection {
 			for _, client := range c.Model.Groups[group] {
 				serializedClientsInGroups[i] = append(serializedClientsInGroups[i], model.SerializedClient{Proc_id: client.Proc_id, HostName: client.ConnectionString})
+				// TODO if connectionString for remote client == localhost -> check if remoteclientString is set and send that
 			}
 		}
 		i++
@@ -200,13 +201,17 @@ func (c *Controller) StartRetryConnections() {
 				}
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
 func (c *Controller) StartRetryMessages() {
 	for {
-		for client, _ := range c.Model.MessageExitBuffer {
+		for client := range c.Model.MessageExitBuffer {
+			if !c.Model.Clients[client] {
+				continue
+			}
+
 			c.Model.MessageExitBufferLock.Lock()
 			oldLen := len(c.Model.MessageExitBuffer[client])
 			oldMsg := []byte{}
@@ -214,6 +219,7 @@ func (c *Controller) StartRetryMessages() {
 				oldMsg = c.Model.MessageExitBuffer[client][0]
 			}
 			c.Model.MessageExitBufferLock.Unlock()
+
 			if oldLen == 0 {
 				continue
 			}
@@ -231,6 +237,9 @@ func (c *Controller) StartRetryMessages() {
 			}
 			c.Model.MessageExitBufferLock.Unlock()
 			if retryNeeded {
+				if !c.Model.Clients[client] {
+					continue
+				}
 				sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
 			}
 		}

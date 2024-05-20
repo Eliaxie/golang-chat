@@ -14,11 +14,11 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 	if error != nil {
 		log.Fatal("Error marshalling message: ", error)
 	}
+	c.Model.MessageExitBufferLock.Lock()
+	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], data)
+	c.Model.MessageExitBufferLock.Unlock()
+	log.Debugln(string(data))
 	if controller.Model.Clients[client] || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
-		c.Model.MessageExitBufferLock.Lock()
-		c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], data)
-		c.Model.MessageExitBufferLock.Unlock()
-		log.Debugln(string(data))
 		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
 	} else {
 		log.Fatal("Error sending message: trying to send message to a client that is not connected. This should be handled above")

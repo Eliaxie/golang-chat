@@ -66,6 +66,7 @@ func main() {
 
 	go _controller.StartRetryConnections()
 	go _controller.StartRetryMessages()
+
 	// starts view
 	view.Start(&_controller)
 

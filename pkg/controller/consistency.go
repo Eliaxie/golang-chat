@@ -16,7 +16,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 			if ownVectorClock.Clock[proc_id]+1 == clientsClock {
 				everyOtherIsLower := true
 				for otherProc_id, otherClientsClock := range ownVectorClock.Clock {
-					if otherProc_id != proc_id && otherClientsClock > pendingMessage.VectorClock.Clock[proc_id] {
+					if otherProc_id != proc_id && otherClientsClock > pendingMessage.VectorClock.Clock[otherProc_id] {
 						everyOtherIsLower = false
 						break
 					}
