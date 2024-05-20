@@ -11,7 +11,25 @@ import (
 
 var clientReconnectionSynchronizationLock sync.Mutex
 
+// map to track clients that are already connecting
+var connectingClients = make(map[string]struct{})
+var handleConnectionLock sync.Mutex
+
 func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
+	handleConnectionLock.Lock()
+	defer handleConnectionLock.Unlock()
+
+	// check if the client is already connecting
+	if _, connecting := connectingClients[client.ConnectionString]; connecting {
+		// send beack a connection refused message
+		controller.SendMessage(model.ConnectionInitResponseMessage{
+			BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
+			ClientID:    c.Model.Myself.Proc_id,
+			Refused:     true,
+		}, *client)
+		return
+	}
+
 	// check if a client is reconnecting
 	reconnection := false
 	oldConnectionString := client.ConnectionString
@@ -19,6 +37,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 		if _client.Proc_id == connInitMsg.ClientID {
 			*client = _client
 			reconnection = true
+			connectingClients[client.ConnectionString] = struct{}{}
 			break
 		}
 	}
@@ -56,6 +75,9 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	if reconnection && !connInitMsg.Reconnection {
 		c.syncReconnectedClient(*client, connInitMsg.Reconnection)
 	}
+
+	// remove the client from the connectingClients map
+	delete(connectingClients, client.ConnectionString)
 }
 
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client *model.Client) {
