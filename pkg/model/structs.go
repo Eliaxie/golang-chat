@@ -32,6 +32,29 @@ const (
 	DISC_ACK
 )
 
+func (m MessageType) String() string {
+	names := [...]string{
+		"BASE",
+		"TEXT",
+		"CONN_INIT",
+		"CONN_INIT_RESPONSE",
+		"CONN_RESTORE",
+		"CONN_RESTORE_RESPONSE",
+		"SYNC_PEERS",
+		"SYNC_PEERS_RESPONSE",
+		"GROUP_CREATE",
+		"MESSAGE_ACK",
+		"CLIENT_DISC",
+		"DISC_ACK",
+	}
+
+	if m < BASE || m > DISC_ACK {
+		return "UNKNOWN"
+	}
+
+	return names[m]
+}
+
 type Message interface {
 	GetMessageType() MessageType
 }
