@@ -54,6 +54,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 
 	log.Debug("Connecting client: ", connInitMsg.ClientID, " ", client.ConnectionString, " Reconnection: ", reconnection, " connectionInit.Reconnection: ", connInitMsg.Reconnection)
 	if !reconnection {
+		// first time connection
 		client.Proc_id = connInitMsg.ClientID
 		client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].Request().Host, ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
 		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
