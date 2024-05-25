@@ -43,7 +43,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 			pending[group] = c.Model.PendingMessages[group]
 		}
 	}
-	log.Trace("Sending connection restore message to ", client.Proc_id)
+	log.Traceln("Sending connection restore message to ", client.Proc_id)
 
 	groups := make([]model.Group, len(stables))
 	serializedStables := make([][]model.StableMessage, len(stables))
@@ -194,10 +194,10 @@ func (c *Controller) StartRetryConnections() {
 
 			// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
 			if !connected && strings.Compare(c.Model.Myself.Proc_id, client.Proc_id) > 0 {
-				log.Trace("Retrying connection to ", client.ConnectionString)
+				log.Traceln("Retrying connection to ", client.ConnectionString)
 				client, err := c.Reconnect(client.ConnectionString)
 				if err != nil {
-					log.Trace("Failed to connect to ", client.ConnectionString)
+					log.Traceln("Failed to connect to ", client.ConnectionString)
 				}
 			}
 		}
@@ -231,7 +231,7 @@ func (c *Controller) StartRetryMessages() {
 			newLen := len(c.Model.MessageExitBuffer[client])
 			if newLen >= oldLen {
 				if slices.Compare(oldMsg, c.Model.MessageExitBuffer[client][0]) == 0 {
-					log.Trace("Stale messages found in MessageExitBuffer, retrying... ", client.ConnectionString)
+					log.Traceln("Stale messages found in MessageExitBuffer, retrying... ", client.ConnectionString)
 					retryNeeded = true
 				}
 			}

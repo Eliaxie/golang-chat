@@ -33,7 +33,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 	header.Set("websocket-external-endpoint", origin)
 	ws, _, err := websocket.DefaultDialer.Dial(serverAddress, header)
 	if err != nil {
-		log.Trace("Error dialing:", err)
+		log.Traceln("Error dialing:", err)
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func ping(ws *websocket.Conn) {
 	for {
 		time.Sleep(200 * time.Millisecond)
 		if err := ws.WriteMessage(2, []byte("ping")); err != nil {
-			log.Errorln(err)
+			log.Traceln(err)
 			return
 		}
 	}
