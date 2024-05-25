@@ -103,13 +103,18 @@ func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.Connect
 					if _remoteClient.Proc_id == c.Model.Myself.Proc_id {
 						clientToAdd = model.Client{Proc_id: _remoteClient.Proc_id, ConnectionString: c.Model.Myself.ConnectionString}
 					} else {
+						found := false
 						for localClient, active := range c.Model.Clients {
 							if localClient.Proc_id == _remoteClient.Proc_id {
+								found = true
 								if !active {
 									c.AddNewConnection(_remoteClient.HostName)
 								}
 								clientToAdd = localClient
 							}
+						}
+						if !found {
+							c.AddNewConnection(_remoteClient.HostName)
 						}
 					}
 					groupClients = append(groupClients, clientToAdd)
