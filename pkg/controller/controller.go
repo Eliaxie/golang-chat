@@ -18,7 +18,7 @@ type Controller struct {
 }
 
 func (c *Controller) AddNewConnection(connection string) (model.Client, error) {
-	resp, err := c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection, false)
+	resp, err := c.addNewConnectionSlave(c.Model.Myself.ConnectionString, connection, false)
 	if err == nil {
 		return *resp, nil
 	}
@@ -26,7 +26,7 @@ func (c *Controller) AddNewConnection(connection string) (model.Client, error) {
 }
 
 func (c *Controller) Reconnect(connection string) (model.Client, error) {
-	resp, err := c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", connection, true)
+	resp, err := c.addNewConnectionSlave(c.Model.Myself.ConnectionString, connection, true)
 	if err == nil {
 		return *resp, nil
 	}
@@ -89,7 +89,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 
 func (c *Controller) AddNewConnections(connection []string) {
 	for _, conn := range connection {
-		c.addNewConnectionSlave("ws://localhost:"+c.Model.ServerPort+"/ws", conn, false)
+		c.addNewConnectionSlave(c.Model.Myself.ConnectionString, conn, false)
 	}
 }
 
