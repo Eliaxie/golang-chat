@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"golang-chat/pkg/model"
 	"net/http"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 var controller *Controller
@@ -29,7 +30,7 @@ func (c *Controller) multicastMessage(message model.Message, clients []model.Cli
 }
 
 func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, reconnection bool) (*model.Client, error) {
-	ws, err := websocket.Dial(serverAddress, "ws", origin)
+	ws, _, err := websocket.DefaultDialer.Dial(serverAddress, nil)
 	if err != nil {
 		log.Trace("Error dialing:", err)
 		return nil, err
@@ -42,14 +43,25 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 
 	initializeClient(c.Model.Myself.Proc_id, client, reconnection)
 	go receiveLoop(ws, client)
+	go ping(ws)
 	return client, nil
+}
+
+func ping(ws *websocket.Conn) {
+	for {
+		time.Sleep(200 * time.Millisecond)
+		if err := ws.WriteMessage(2, []byte("ping")); err != nil {
+			log.Errorln(err)
+			return
+		}
+	}
 }
 
 func sendMessageSlave(ws *websocket.Conn, client model.Client) error {
 	controller.Model.MessageExitBufferLock.Lock()
 	defer controller.Model.MessageExitBufferLock.Unlock()
 	for _, msg := range controller.Model.MessageExitBuffer[client] {
-		if err := websocket.Message.Send(ws, msg); err != nil {
+		if err := ws.WriteMessage(1, msg); err != nil {
 			log.Errorln(err)
 			return err
 		}
@@ -60,29 +72,45 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client) error {
 }
 
 func startServer(port string) {
-	http.Handle("/ws", websocket.Handler(messageHandler))
+	http.HandleFunc("/ws", messageHandler)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
 
-func messageHandler(ws *websocket.Conn) {
-	client := &model.Client{Proc_id: "", ConnectionString: ws.Request().RemoteAddr}
-	controller.Model.PendingClients[ws.Request().RemoteAddr] = struct{}{}
-	controller.Model.ClientWs[ws.Request().RemoteAddr] = ws
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
-	receiveLoop(ws, client)
+func messageHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	connString := conn.RemoteAddr().String()
+	client := &model.Client{Proc_id: "", ConnectionString: connString}
+	controller.Model.PendingClients[connString] = struct{}{}
+	controller.Model.ClientWs[connString] = conn
+	go ping(conn)
+	receiveLoop(conn, client)
 }
 
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
-		err := websocket.Message.Receive(ws, &data)
+		ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
 			//todo: here we handle disconnections is every error a disconnection?
 			controller.DisconnectClient(*client)
 			break
+		}
+		if messageType == 2 {
+			//ping
+			continue
 		}
 
 		log.Infoln("Handled data: ", string(data))

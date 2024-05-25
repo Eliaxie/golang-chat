@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/websocket"
 
 	"golang-chat/pkg/view"
 )

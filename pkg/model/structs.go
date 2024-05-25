@@ -3,7 +3,7 @@ package model
 import (
 	"sync"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 type ConsistencyModel int
