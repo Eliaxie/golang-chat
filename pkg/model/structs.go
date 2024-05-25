@@ -107,7 +107,7 @@ type TextMessage struct {
 type ConnectionInitMessage struct {
 	BaseMessage
 	ClientID     string `json:"clientId"`
-	ServerPort   string `json:"serverPort"`
+	ServerIp     string `json:"serverPort"`
 	Reconnection bool   `json:"reconnect"`
 }
 
@@ -191,9 +191,8 @@ type StableMessage struct {
 
 // Model
 type Model struct {
-	Myself        Client
-	ServerPort    string
-	ExtServerPort string
+	Myself     Client
+	ServerPort string
 
 	// map client_endpoint -> ws
 	ClientWs map[string]*websocket.Conn

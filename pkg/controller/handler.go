@@ -3,7 +3,6 @@ package controller
 import (
 	"golang-chat/pkg/model"
 	"slices"
-	"strings"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -55,7 +54,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	log.Debug("Connecting client: ", connInitMsg.ClientID, " ", client.ConnectionString, " Reconnection: ", reconnection, " connectionInit.Reconnection: ", connInitMsg.Reconnection)
 	if connectionFlow == model.FirstConnection {
 		client.Proc_id = connInitMsg.ClientID
-		client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].RemoteAddr().String(), ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
+		client.ConnectionString = connInitMsg.ServerIp
 		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
 	}
 	controller.Model.ClientWs[client.ConnectionString] = controller.Model.ClientWs[oldConnectionString]

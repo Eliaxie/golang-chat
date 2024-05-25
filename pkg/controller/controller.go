@@ -182,9 +182,9 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 
 }
 
-func (c *Controller) StartServer(port string, extPort string) {
+func (c *Controller) StartServer(port string, extIp string) {
 	c.Model.ServerPort = port
-	c.Model.ExtServerPort = extPort
+	c.Model.Myself.ConnectionString = extIp
 	InitWebServer(port, c)
 }
 
