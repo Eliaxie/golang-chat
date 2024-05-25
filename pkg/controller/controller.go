@@ -207,7 +207,7 @@ func (c *Controller) StartRetryConnections() {
 
 func (c *Controller) StartRetryMessages() {
 	for {
-		for client := range c.Model.MessageExitBuffer {
+		for client := range c.Model.Clients {
 			if !c.Model.Clients[client] {
 				continue
 			}
