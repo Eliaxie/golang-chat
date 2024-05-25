@@ -27,7 +27,7 @@ func Start(c *controller.Controller) {
 	log.Infoln("Server started on port ", port, "-> ", extIp)
 	username := displayInsertUsername()
 	Proc_id := username + "-" + _controller.GenerateUniqueID()
-	_controller.Model.Myself = model.Client{Proc_id: Proc_id}
+	_controller.Model.Myself.Proc_id = Proc_id
 	log.Infoln("Username: ", Proc_id)
 	displayMainMenu()
 }
@@ -46,7 +46,7 @@ func displayInsertExtPort(localIp string) string {
 	if !ok {
 		defIp = localIp
 	}
-	fmt.Print("Enter external port (default: ", defIp, "): ")
+	fmt.Print("Enter external ip (default: ", defIp, "): ")
 	val := ReadStringTrimmed()
 	if val == "" {
 		val = defIp
@@ -120,7 +120,6 @@ func displayAddConnectionManually() {
 	}
 	if connection == "" {
 		connection = defConnection
-
 	}
 
 	// call the function to add the connection
