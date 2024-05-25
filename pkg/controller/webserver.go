@@ -20,8 +20,7 @@ func InitWebServer(port string, c *Controller) {
 
 func (c *Controller) multicastMessage(message model.Message, clients []model.Client) {
 	// print list of clients
-	log.Debugln("Multicasting message to clients:")
-	log.Debugln(clients)
+	log.Debugln("Multicasting message to clients: ", clients)
 	for _, client := range clients {
 		if client != c.Model.Myself {
 			c.SendMessage(message, client)
@@ -113,14 +112,14 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 			continue
 		}
 
-		log.Infoln("Handled data: ", string(data))
-
+		log.Debug("Handled data: ", string(data))
 		var msg model.BaseMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			log.Error("Error deserializing message:", err)
 			continue
 		}
 
+		log.Infoln("Received message ", msg.GetMessageType().String(), " from ", client.Proc_id)
 		// Handle based on message type
 		switch msg.GetMessageType() {
 		case model.TEXT:

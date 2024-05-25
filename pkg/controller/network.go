@@ -17,7 +17,7 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 	c.Model.MessageExitBufferLock.Lock()
 	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], data)
 	c.Model.MessageExitBufferLock.Unlock()
-	log.Debugln(string(data))
+	log.Infoln("Sending message " + message.GetMessageType().String() + " to " + client.ConnectionString)
 	if controller.Model.Clients[client] || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
 		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
 	} else {

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/notify"
@@ -183,8 +182,9 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 
 }
 
-func (c *Controller) StartServer(port string) {
+func (c *Controller) StartServer(port string, extPort string) {
 	c.Model.ServerPort = port
+	c.Model.ExtServerPort = extPort
 	InitWebServer(port, c)
 }
 
@@ -253,10 +253,10 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 
 	c.Model.GroupsLocks[message.Group].Lock()
 
-	_logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
-	_logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
-	log.Debugln("Buffer Pending: ", string(_logP))
-	log.Debugln("Buffer Stable: ", string(_logS))
+	// _logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
+	// _logS, _ := json.Marshal(c.Model.StableMessages[message.Group])
+	// log.Debugln("Buffer Pending: ", string(_logP))
+	// log.Debugln("Buffer Stable: ", string(_logS))
 
 	newMessage := true
 	switch c.Model.GroupsConsistency[message.Group] {
@@ -277,10 +277,10 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	}
 	c.Model.GroupsLocks[message.Group].Unlock()
 
-	_logP, _ = json.Marshal(c.Model.PendingMessages[message.Group])
-	_logS, _ = json.Marshal(c.Model.StableMessages[message.Group])
-	log.Debugln("Buffer Pending: ", string(_logP))
-	log.Debugln("Buffer Stable: ", string(_logS))
+	// _logP, _ = json.Marshal(c.Model.PendingMessages[message.Group])
+	// _logS, _ = json.Marshal(c.Model.StableMessages[message.Group])
+	// log.Debugln("Buffer Pending: ", string(_logP))
+	// log.Debugln("Buffer Stable: ", string(_logS))
 	return false
 }
 
