@@ -42,10 +42,14 @@ func displayInsertPort() int {
 }
 
 func displayInsertExtPort(localIp string) string {
-	fmt.Print("Enter external port (default: ", localIp, "): ")
+	defIp, ok := os.LookupEnv("GOLANGCHAT_DEFAULT_EXTERNALIP")
+	if !ok {
+		defIp = localIp
+	}
+	fmt.Print("Enter external port (default: ", defIp, "): ")
 	val := ReadStringTrimmed()
 	if val == "" {
-		val = localIp
+		val = defIp
 	}
 	return val
 }
@@ -103,13 +107,20 @@ func displayAddConnectionFromFile() {
 
 func displayAddConnectionManually() {
 	MoveScreenUp()
-	fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
+	defConnection, ok := os.LookupEnv("GOLANGCHAT_DEFAULT_INITIALCONNECTION")
+	if !ok {
+		// Handle the case where the environment variable is not set
+		defConnection = model.DEFAULT_CONNECTION
+	}
+
+	fmt.Print("Enter Connection (default: ", defConnection, ")(\"q\" to go back): ")
 	connection := ReadStringTrimmed()
 	if connection == "q" {
 		return
 	}
 	if connection == "" {
-		connection = model.DEFAULT_CONNECTION
+		connection = defConnection
+
 	}
 
 	// call the function to add the connection
