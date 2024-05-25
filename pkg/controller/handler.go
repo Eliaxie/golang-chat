@@ -82,8 +82,10 @@ func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.C
 	if connInitRespMsg.Refused {
 		log.Debug("Connection refused")
 		delete(controller.Model.PendingClients, client.ConnectionString)
+		c.Model.ClientWs[client.ConnectionString].Close()
 		return
 	}
+	log.Debug("Connection accepted by ", client)
 	delete(controller.Model.PendingClients, client.ConnectionString)
 	client.Proc_id = connInitRespMsg.ClientID
 	controller.Model.Clients[*client] = true
