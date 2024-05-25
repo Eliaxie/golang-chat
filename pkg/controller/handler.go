@@ -18,6 +18,8 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	handleConnectionLock.Lock()
 	defer handleConnectionLock.Unlock()
 
+	var connectionFlow = model.FirstConnection
+
 	// check if a client is reconnecting
 	reconnection := false
 	oldConnectionString := client.ConnectionString
@@ -29,8 +31,19 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 		}
 	}
 
+	if reconnection && !connInitMsg.Reconnection {
+		connectionFlow = model.ReconnectionPeerCrashed
+	} else if reconnection && connInitMsg.Reconnection {
+		connectionFlow = model.ReconnectionNetwork
+	} else if !reconnection && connInitMsg.Reconnection {
+		connectionFlow = model.ReconnectionSelfCrashed
+	} else if !reconnection && !connInitMsg.Reconnection {
+		connectionFlow = model.FirstConnection
+	}
+
 	// check if someone is trying to reconnect to me but I don't know him. I want to be the one who reconnects.
-	if connInitMsg.Reconnection && !reconnection {
+	// Also checks if the client is already connected
+	if connectionFlow == model.ReconnectionSelfCrashed || c.Model.Clients[*client] {
 		controller.SendMessage(model.ConnectionInitResponseMessage{
 			BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
 			ClientID:    c.Model.Myself.Proc_id,
@@ -40,8 +53,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	}
 
 	log.Debug("Connecting client: ", connInitMsg.ClientID, " ", client.ConnectionString, " Reconnection: ", reconnection, " connectionInit.Reconnection: ", connInitMsg.Reconnection)
-	if !reconnection {
-		// first time connection
+	if connectionFlow == model.FirstConnection {
 		client.Proc_id = connInitMsg.ClientID
 		client.ConnectionString = "ws://" + strings.Split(controller.Model.ClientWs[client.ConnectionString].RemoteAddr().String(), ":")[0] + ":" + connInitMsg.ServerPort + "/ws"
 		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
@@ -49,7 +61,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	controller.Model.ClientWs[client.ConnectionString] = controller.Model.ClientWs[oldConnectionString]
 	delete(controller.Model.ClientWs, oldConnectionString)
 	delete(controller.Model.PendingClients, oldConnectionString)
-	if !reconnection {
+	if connectionFlow == model.FirstConnection {
 		controller.Model.Clients[*client] = true
 	}
 
@@ -59,9 +71,11 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 		ClientID:    c.Model.Myself.Proc_id,
 	}, *client)
 
-	// If the client hasn't crashed I don't need to sync it
-	if reconnection && !connInitMsg.Reconnection {
+	// If the client hasn't crashed I don't need to sync it, I just set it as active
+	if connectionFlow == model.ReconnectionPeerCrashed {
 		c.syncReconnectedClient(*client, connInitMsg.Reconnection)
+	} else if connectionFlow == model.ReconnectionNetwork {
+		c.Model.Clients[*client] = true
 	}
 
 }

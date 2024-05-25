@@ -32,6 +32,15 @@ const (
 	DISC_ACK
 )
 
+type ConnectionFlow int
+
+const (
+	FirstConnection ConnectionFlow = iota
+	ReconnectionNetwork
+	ReconnectionPeerCrashed
+	ReconnectionSelfCrashed
+)
+
 func (m MessageType) String() string {
 	names := [...]string{
 		"BASE",
