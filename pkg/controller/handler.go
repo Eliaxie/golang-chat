@@ -191,15 +191,16 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 		if serializedClient.Proc_id == client.Proc_id {
 			continue
 		}
-
-		clientConnection, err := c.AddNewConnection(serializedClient.HostName)
-		if err != nil {
-			log.Errorln("Error adding new connection", err)
-			continue
+		if c.Model.Myself.Proc_id < serializedClient.Proc_id {
+			_, err := c.AddNewConnection(serializedClient.HostName)
+			if err != nil {
+				log.Errorln("Error adding new connection", err)
+				continue
+			}
 		}
-		clientConnection.Proc_id = serializedClient.Proc_id
+
 		// new client with proc_id and hostName of groupClients
-		_clients = append(_clients, clientConnection)
+		_clients = append(_clients, model.Client{Proc_id: serializedClient.Proc_id, ConnectionString: serializedClient.HostName})
 
 	}
 
