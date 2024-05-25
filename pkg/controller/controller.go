@@ -201,7 +201,7 @@ func (c *Controller) StartRetryConnections() {
 				}
 			}
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(3000 * time.Millisecond)
 	}
 }
 

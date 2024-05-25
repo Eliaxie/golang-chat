@@ -40,8 +40,15 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 	client := &model.Client{Proc_id: "", ConnectionString: serverAddress}
 	c.Model.PendingClients[serverAddress] = struct{}{}
 	c.Model.ClientWs[serverAddress] = ws
-	c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
-
+	if reconnection {
+		for _client := range c.Model.Clients {
+			if _client.ConnectionString == serverAddress {
+				client = &_client
+			}
+		}
+	} else {
+		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
+	}
 	initializeClient(c.Model.Myself.Proc_id, client, reconnection)
 	go receiveLoop(ws, client)
 	go ping(ws)
