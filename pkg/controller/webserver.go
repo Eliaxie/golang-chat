@@ -29,7 +29,9 @@ func (c *Controller) multicastMessage(message model.Message, clients []model.Cli
 }
 
 func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, reconnection bool) (*model.Client, error) {
-	ws, _, err := websocket.DefaultDialer.Dial(serverAddress, nil)
+	header := http.Header{}
+	header.Set("origin", origin)
+	ws, _, err := websocket.DefaultDialer.Dial(serverAddress, header)
 	if err != nil {
 		log.Trace("Error dialing:", err)
 		return nil, err
@@ -88,7 +90,8 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	connString := conn.RemoteAddr().String()
+
+	connString := r.Header.Get("origin")
 	client := &model.Client{Proc_id: "", ConnectionString: connString}
 	controller.Model.PendingClients[connString] = struct{}{}
 	controller.Model.ClientWs[connString] = conn
