@@ -48,6 +48,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 			ClientID:    c.Model.Myself.Proc_id,
 			Refused:     true,
 		}, *client)
+		c.Model.ClientWs[client.ConnectionString].Close()
 		return
 	}
 

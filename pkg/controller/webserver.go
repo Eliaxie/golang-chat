@@ -76,8 +76,10 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 	defer websocketLock.Unlock()
 	controller.Model.MessageExitBufferLock.Lock()
 	defer controller.Model.MessageExitBufferLock.Unlock()
-	for index, msg := range controller.Model.MessageExitBuffer[client] {
+	index := 0
+	for _, msg := range controller.Model.MessageExitBuffer[client] {
 		if !active && msg.MessageType == model.TEXT {
+			index++
 			continue
 		}
 		if err := ws.WriteMessage(1, msg.Message); err != nil {
@@ -127,6 +129,7 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
+			ws.Close()
 			//todo: here we handle disconnections is every error a disconnection?
 			controller.DisconnectClient(*client)
 			break
