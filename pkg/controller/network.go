@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -18,8 +19,8 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], model.MessageWithType{MessageType: message.GetMessageType(), Message: data})
 	c.Model.MessageExitBufferLock.Unlock()
 	log.Infoln("Sending message " + message.GetMessageType().String() + " to " + client.ConnectionString)
-	if controller.Model.Clients[client] || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
-		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client, c.Model.Clients[client])
+	if maps.Load(&controller.Model.Clients, client) || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
+		sendMessageSlave(maps.Load(&c.Model.ClientWs, client.ConnectionString), client, maps.Load(&c.Model.Clients, client))
 	}
 }
 

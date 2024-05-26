@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"strings"
 
@@ -63,7 +64,7 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 		for client := range _controller.Model.Clients {
 
 			// check if client is connected
-			if !_controller.Model.Clients[client] {
+			if !maps.Load(&_controller.Model.Clients, client) {
 				continue
 			}
 
@@ -82,7 +83,7 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 			}
 
 			// check if client is connected
-			if !_controller.Model.Clients[client] {
+			if !maps.Load(&_controller.Model.Clients, client) {
 				continue
 			}
 
@@ -161,7 +162,7 @@ func inputLoop(group model.Group) {
 func displayGroupMembers(group model.Group) {
 	color.Green("Members of group %s", group)
 	for _, client := range _controller.Model.Groups[group] {
-		if _controller.Model.Clients[client] || client == _controller.Model.Myself {
+		if maps.Load(&_controller.Model.Clients, client) || client == _controller.Model.Myself {
 			color.White("- %s", client.Proc_id)
 		} else {
 			color.Red("disc - %s", client.Proc_id)

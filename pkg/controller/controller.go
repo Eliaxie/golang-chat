@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/notify"
 	"slices"
@@ -77,7 +78,8 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 		GroupsVectorClocks:        serializedVectorClocks,
 	}, client)
 
-	controller.Model.Clients[client] = true
+	//controller.Model.Clients[client] = true
+	maps.Store(&c.Model.Clients, client, true)
 
 	for group, clients := range c.Model.Groups {
 		if slices.Contains(clients, client) {
@@ -109,19 +111,20 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 
 				case model.GLOBAL:
 					// if client is already marked as disconnected, do nothing
-					if !c.Model.Clients[disconnectedClient] {
+					if !maps.Load(&c.Model.Clients, disconnectedClient) {
 						break
 					}
 
 					c.Model.DisconnectionLocks[group].Lock()
-					c.Model.Clients[disconnectedClient] = false
+					//c.Model.Clients[disconnectedClient] = false
+					maps.Store(&c.Model.Clients, disconnectedClient, false)
 					c.Model.DisconnectionLocks[group].Unlock()
 
 					// todo: stop sending messages (locks?) and modifing group data
 					c.Model.GroupsLocks[group].Lock()
 					clientsToNotify := make([]model.Client, 0)
 					for _, activeClient := range c.Model.Groups[group] {
-						if c.Model.Clients[activeClient] {
+						if maps.Load(&c.Model.Clients, activeClient) {
 							clientsToNotify = append(clientsToNotify, activeClient)
 						}
 					}
@@ -156,7 +159,8 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 							for !acknowledged && inActiveWindow {
 								c.Model.DisconnectionLocks[group].Lock()
 								_, acknowledged = acks[activeClient.Proc_id]
-								_, inActiveWindow = c.Model.Clients[activeClient]
+								//_, inActiveWindow = c.Model.Clients[activeClient]
+								maps.Load(&c.Model.Clients, activeClient)
 								c.Model.DisconnectionLocks[group].Unlock()
 								time.Sleep(100 * time.Millisecond)
 							}
@@ -173,9 +177,11 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 					// resume sending messages (locks?)
 					c.Model.GroupsLocks[group].Unlock()
 				case model.CAUSAL:
-					controller.Model.Clients[disconnectedClient] = false
+					//controller.Model.Clients[disconnectedClient] = false
+					maps.Store(&c.Model.Clients, disconnectedClient, false)
 				default:
-					controller.Model.Clients[disconnectedClient] = false
+					//controller.Model.Clients[disconnectedClient] = false
+					maps.Store(&c.Model.Clients, disconnectedClient, false)
 				}
 
 				break
@@ -193,7 +199,8 @@ func (c *Controller) StartServer(port string, extIp string) {
 
 func (c *Controller) StartRetryConnections(client model.Client) {
 	for {
-		connected := c.Model.Clients[client]
+		//connected := c.Model.Clients[client]
+		connected := maps.Load(&c.Model.Clients, client)
 		if connected {
 			log.Error("Client ", client.Proc_id, " is already connected")
 			return
@@ -219,7 +226,7 @@ func (c *Controller) StartRetryMessages() {
 		clientsTemp := c.Model.MessageExitBuffer
 		c.Model.MessageExitBufferLock.Unlock()
 		for client := range clientsTemp {
-			if !c.Model.Clients[client] {
+			if !maps.Load(&c.Model.Clients, client) {
 				continue
 			}
 
@@ -248,10 +255,10 @@ func (c *Controller) StartRetryMessages() {
 			}
 			c.Model.MessageExitBufferLock.Unlock()
 			if retryNeeded {
-				if !c.Model.Clients[client] {
+				if !maps.Load(&c.Model.Clients, client) {
 					continue
 				}
-				sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client, true)
+				sendMessageSlave(maps.Load(&c.Model.ClientWs, client.ConnectionString), client, true)
 			}
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -341,7 +348,7 @@ func (c *Controller) createGroup(group model.Group, consistencyModel model.Consi
 func (c *Controller) WaitForConnection(client model.Client) bool {
 	for {
 		// a client is no longer pending once it has been added to the clients list
-		_, ok := c.Model.PendingClients[client.ConnectionString]
+		_, ok := maps.LoadAndCheck(&c.Model.PendingClients, client.ConnectionString)
 		if !ok {
 			return true
 		}

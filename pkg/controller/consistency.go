@@ -10,7 +10,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 
 	ownVectorClock := c.Model.GroupsVectorClocks[group]
 	// for each pending message
-	for pending_index, pendingMessage := range maps.Load(c.Model.PendingMessages, group) {
+	for pending_index, pendingMessage := range maps.Load(&c.Model.PendingMessages, group) {
 		// for each client clock in the pending message
 		for proc_id, clientsClock := range pendingMessage.VectorClock.Clock {
 
@@ -54,7 +54,7 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 
 	activeClients := make([]model.Client, 0)
 	for _, groupMember := range c.Model.Groups[message.Group] {
-		if c.Model.Clients[groupMember] {
+		if maps.Load(&c.Model.Clients, groupMember) {
 			activeClients = append(activeClients, groupMember)
 		}
 	}
@@ -102,7 +102,7 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 	checkAcks := func(pendingMessage model.PendingMessage) bool {
 		groupMembers := c.Model.Groups[group]
 		for _, groupMember := range groupMembers {
-			if c.Model.Clients[groupMember] {
+			if maps.Load(&c.Model.Clients, groupMember) {
 				// group member is active
 				if groupMember.Proc_id == c.Model.Myself.Proc_id {
 					continue

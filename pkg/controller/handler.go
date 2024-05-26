@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"slices"
 	"sync"
@@ -42,13 +43,13 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 
 	// check if someone is trying to reconnect to me but I don't know him. I want to be the one who reconnects.
 	// Also checks if the client is already connected
-	if connectionFlow == model.ReconnectionSelfCrashed || c.Model.Clients[*client] {
+	if connectionFlow == model.ReconnectionSelfCrashed || maps.Load(&c.Model.Clients, *client) {
 		controller.SendMessage(model.ConnectionInitResponseMessage{
 			BaseMessage: model.BaseMessage{MessageType: model.CONN_INIT_RESPONSE},
 			ClientID:    c.Model.Myself.Proc_id,
 			Refused:     true,
 		}, *client)
-		c.Model.ClientWs[client.ConnectionString].Close()
+		maps.Load(&c.Model.ClientWs, client.ConnectionString).Close()
 		return
 	}
 
@@ -58,9 +59,11 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 		client.ConnectionString = connInitMsg.ServerIp
 		c.Model.MessageExitBuffer[*client] = make([]model.MessageWithType, 0)
 	}
-	delete(controller.Model.PendingClients, oldConnectionString)
+	//delete(controller.Model.PendingClients, oldConnectionString)
+	maps.Delete(&c.Model.PendingClients, oldConnectionString)
 	if connectionFlow == model.FirstConnection {
-		controller.Model.Clients[*client] = true
+		//controller.Model.Clients[*client] = true
+		maps.Store(&c.Model.Clients, *client, true)
 	}
 
 	// Send reply INIT Message with my clientID
@@ -73,7 +76,8 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	if connectionFlow == model.ReconnectionPeerCrashed {
 		c.syncReconnectedClient(*client, connInitMsg.Reconnection)
 	} else if connectionFlow == model.ReconnectionNetwork {
-		c.Model.Clients[*client] = true
+		//c.Model.Clients[*client] = true
+		maps.Store(&c.Model.Clients, *client, true)
 	}
 
 }
@@ -81,14 +85,17 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client *model.Client) {
 	if connInitRespMsg.Refused {
 		log.Debug("Connection refused")
-		delete(controller.Model.PendingClients, client.ConnectionString)
-		c.Model.ClientWs[client.ConnectionString].Close()
+		//delete(controller.Model.PendingClients, client.ConnectionString)
+		maps.Delete(&c.Model.PendingClients, client.ConnectionString)
+		maps.Load(&c.Model.ClientWs, client.ConnectionString).Close()
 		return
 	}
 	log.Debug("Connection accepted by ", client)
-	delete(controller.Model.PendingClients, client.ConnectionString)
+	//delete(controller.Model.PendingClients, client.ConnectionString)
+	maps.Delete(&c.Model.PendingClients, client.ConnectionString)
 	client.Proc_id = connInitRespMsg.ClientID
-	controller.Model.Clients[*client] = true
+	//controller.Model.Clients[*client] = true
+	maps.Store(&c.Model.Clients, *client, true)
 }
 
 func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.ConnectionRestoreMessage, client *model.Client) {
@@ -237,7 +244,8 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 
 	// remove client from active window
 	c.Model.DisconnectionLocks[clientDisconnectMsg.Group].Lock()
-	c.Model.Clients[disconnectedClient] = false
+	//c.Model.Clients[disconnectedClient] = false
+	maps.Store(&c.Model.Clients, disconnectedClient, false)
 	c.Model.DisconnectionLocks[clientDisconnectMsg.Group].Unlock()
 
 	// add all new pending messages
@@ -274,7 +282,7 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 		// send acks if the message is new
 		activeClients := make([]model.Client, 0)
 		for _, groupMember := range c.Model.Groups[clientDisconnectMsg.Group] {
-			if c.Model.Clients[groupMember] {
+			if maps.Load(&c.Model.Clients, groupMember) {
 				activeClients = append(activeClients, groupMember)
 			}
 		}

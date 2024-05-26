@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"errors"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"net/http"
 	"sync"
@@ -44,8 +45,9 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 	}
 
 	client := &model.Client{Proc_id: "", ConnectionString: serverAddress}
-	c.Model.PendingClients[serverAddress] = struct{}{}
-	c.Model.ClientWs[serverAddress] = ws
+	//c.Model.PendingClients[serverAddress] = struct{}{}
+	maps.Store(&c.Model.PendingClients, serverAddress, struct{}{})
+	maps.Store(&c.Model.ClientWs, serverAddress, ws)
 	if reconnection {
 		for _client := range c.Model.Clients {
 			if _client.ConnectionString == serverAddress {
@@ -142,11 +144,15 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 	connString := r.Header.Get("websocket-external-endpoint")
 	client := &model.Client{Proc_id: "", ConnectionString: connString}
-	controller.Model.PendingClients[connString] = struct{}{}
-	controller.Model.ClientWs[connString] = conn
+	//controller.Model.PendingClients[connString] = struct{}{}
+	maps.Store(&controller.Model.PendingClients, connString, struct{}{})
+	//controller.Model.ClientWs[connString] = conn
+	maps.Store(&controller.Model.ClientWs, connString, conn)
 	go ping(conn)
 	receiveLoop(conn, client)
 }
+
+var pingSync *sync.Mutex = &sync.Mutex{}
 
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
@@ -163,11 +169,13 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 		if messageType == 2 {
 			//ping
 			if clientWaitAck[*client] != nil {
+				pingSync.Lock()
 				if clientWaitAck[*client].TryLock() {
 					clientWaitAck[*client].Unlock()
 				} else {
 					clientWaitAck[*client].Unlock()
 				}
+				pingSync.Unlock()
 			}
 			continue
 		}
