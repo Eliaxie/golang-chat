@@ -130,8 +130,9 @@ func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.Connect
 				c.createGroup(group, model.CAUSAL, groupClients)
 			}
 			for _, message := range connRestoreMsg.StableMessages[i] {
-				if !slices.Contains(c.Model.StableMessages[group], message) {
-					c.Model.StableMessages[group] = append(c.Model.StableMessages[group], message)
+				if !slices.Contains(maps.Load(&c.Model.StableMessages, group), message) {
+					//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], message)
+					maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), message))
 				}
 			}
 			for proc := range c.Model.GroupsVectorClocks[group].Clock {
@@ -225,10 +226,14 @@ func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.
 
 func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model.Client) {
 	c.Model.GroupsLocks[messageAck.Group].Lock()
-	if c.Model.MessageAcks[messageAck.Group][messageAck.Reference] == nil {
-		c.Model.MessageAcks[messageAck.Group][messageAck.Reference] = map[string]bool{}
+	_group := maps.Load(&c.Model.MessageAcks, messageAck.Group)
+	_scalarClock := maps.Load(&_group, messageAck.Reference)
+	if _scalarClock == nil {
+		//c.Model.MessageAcks[messageAck.Group][messageAck.Reference] = map[string]bool{}
+		maps.Store(&_group, messageAck.Reference, map[string]bool{})
 	}
-	c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
+	//c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
+	maps.Store(&_scalarClock, client.Proc_id, true)
 
 	newMessage := false
 	newMessage = c.tryAcceptTopGlobals(messageAck.Group)
@@ -252,7 +257,7 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 	c.Model.GroupsLocks[clientDisconnectMsg.Group].Lock()
 	var pendingsToKeep []model.PendingMessage
 	intersection := make(map[string]struct{})
-	for _, message := range c.Model.PendingMessages[clientDisconnectMsg.Group] {
+	for _, message := range maps.Load(&c.Model.PendingMessages, clientDisconnectMsg.Group) {
 		// if not the client that disconnected
 		if message.Client.Proc_id != disconnectedClient.Proc_id {
 			pendingsToKeep = append(pendingsToKeep, message)
@@ -267,7 +272,8 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 			}
 		}
 	}
-	c.Model.PendingMessages[clientDisconnectMsg.Group] = pendingsToKeep
+	//c.Model.PendingMessages[clientDisconnectMsg.Group] = pendingsToKeep
+	maps.Store(&c.Model.PendingMessages, clientDisconnectMsg.Group, pendingsToKeep)
 
 	for _, newPending := range clientDisconnectMsg.PendingMessages {
 		// if pending already in intersection do nothing ( message was already received)
@@ -292,11 +298,15 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 			Group:       clientDisconnectMsg.Group, Reference: newPending.ScalarClock}, activeClients)
 
 		// ensure the message ack map is initialized
-		if c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] == nil {
-			c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] = map[string]bool{}
+		_group := maps.Load(&c.Model.MessageAcks, clientDisconnectMsg.Group)
+		_scalarClock := maps.Load(&_group, newPending.ScalarClock)
+		if _scalarClock == nil {
+			//c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] = map[string]bool{}
+			maps.Store(&_group, newPending.ScalarClock, map[string]bool{})
 		}
 		// mark the message sender as acked
-		c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock][client.Proc_id] = true
+		//c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock][client.Proc_id] = true
+		maps.Store(&_scalarClock, client.Proc_id, true)
 		c.tryAcceptTopGlobals(clientDisconnectMsg.Group)
 	}
 	c.Model.GroupsLocks[clientDisconnectMsg.Group].Unlock()

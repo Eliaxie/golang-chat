@@ -33,7 +33,8 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
 	if c.Model.GroupsConsistency[group] != model.GLOBAL {
-		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself})
+		//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself})
+		maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself}))
 		c.Notifier.Notify(group)
 	} else {
 		c.appendMsgToSortedPending(textMessage, c.Model.Myself)

@@ -26,10 +26,11 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 					}
 				}
 				if everyOtherIsLower {
-					c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-						model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
+					//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
+					maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client}))
 
-					c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
+					//c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
+					maps.Store(&c.Model.PendingMessages, group, removeAtIndex(maps.Load(&c.Model.PendingMessages, group), pending_index))
 					c.Model.GroupsVectorClocks[group].Clock[proc_id]++
 					c.tryAcceptCasualMessages(group)
 					return true
@@ -64,11 +65,15 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 		Group:       message.Group, Reference: scalarClock}, activeClients)
 
 	// ensure the message ack map is initialized
-	if c.Model.MessageAcks[message.Group][scalarClock] == nil {
-		c.Model.MessageAcks[message.Group][scalarClock] = map[string]bool{}
+	_group := maps.Load(&c.Model.MessageAcks, message.Group)
+	_scalarClock := maps.Load(&_group, scalarClock)
+	if _scalarClock == nil {
+		//c.Model.MessageAcks[message.Group][scalarClock] = map[string]bool{}
+		maps.Store(&_group, scalarClock, map[string]bool{})
 	}
 	// mark the message sender as acked
-	c.Model.MessageAcks[message.Group][scalarClock][client.Proc_id] = true
+	//c.Model.MessageAcks[message.Group][scalarClock][client.Proc_id] = true
+	maps.Store(&_scalarClock, client.Proc_id, true)
 	return c.tryAcceptTopGlobals(message.Group)
 }
 
@@ -83,7 +88,7 @@ func (c *Controller) appendMsgToSortedPending(message model.TextMessage, client 
 
 func (c *Controller) appendSortedPending(message model.PendingMessage, group model.Group) {
 	// find the index where to insert the message
-	pendingMessages := c.Model.PendingMessages[group]
+	pendingMessages := maps.Load(&c.Model.PendingMessages, group)
 	index := sort.Search(len(pendingMessages), func(i int) bool {
 		if pendingMessages[i].ScalarClock.Clock == message.ScalarClock.Clock {
 			return pendingMessages[i].ScalarClock.Proc_id > message.ScalarClock.Proc_id
@@ -92,7 +97,8 @@ func (c *Controller) appendSortedPending(message model.PendingMessage, group mod
 	})
 
 	// insert the message
-	c.Model.PendingMessages[group] = append(pendingMessages[:index], append([]model.PendingMessage{message}, pendingMessages[index:]...)...)
+	//c.Model.PendingMessages[group] = append(pendingMessages[:index], append([]model.PendingMessage{message}, pendingMessages[index:]...)...)
+	maps.Store(&c.Model.PendingMessages, group, append(pendingMessages[:index], append([]model.PendingMessage{message}, pendingMessages[index:]...)...)) // lol ok
 }
 
 func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
@@ -107,7 +113,9 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 				if groupMember.Proc_id == c.Model.Myself.Proc_id {
 					continue
 				}
-				if _, ok := c.Model.MessageAcks[group][pendingMessage.ScalarClock][groupMember.Proc_id]; !ok {
+				_group := maps.Load(&c.Model.MessageAcks, group)
+				_scalarClock := maps.Load(&_group, pendingMessage.ScalarClock)
+				if _, ok := maps.LoadAndCheck(&_scalarClock, groupMember.Proc_id); !ok {
 					return false
 				}
 			}
@@ -116,15 +124,18 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 	}
 
 	// try accepting pending messages until one is not accepted
-	for _, pendingMessage := range c.Model.PendingMessages[group] {
+	for _, pendingMessage := range maps.Load(&c.Model.PendingMessages, group) {
 		isAccepted := checkAcks(pendingMessage)
 		if !isAccepted {
 			break
 		}
-		c.Model.StableMessages[group] = append(c.Model.StableMessages[group],
-			model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
-		c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
-		c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
+		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
+		maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client}))
+		//c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
+		maps.Store(&c.Model.PendingMessages, group, removeAtIndex(maps.Load(&c.Model.PendingMessages, group), 0))
+		//c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
+		_group := maps.Load(&c.Model.MessageAcks, group)
+		maps.Store(&_group, pendingMessage.ScalarClock, map[string]bool{})
 		hasNewMessages = isAccepted || hasNewMessages
 	}
 	return hasNewMessages
@@ -134,13 +145,13 @@ func (c *Controller) tryAcceptFIFOMessages(message model.TextMessage, client mod
 
 	newMessage := false
 	// adds all pending messages to the stable buffer
-	for _, pendingMessage := range c.Model.PendingMessages[message.Group] {
+	for _, pendingMessage := range maps.Load(&c.Model.PendingMessages, message.Group) {
 		newMessage = true
-		c.Model.StableMessages[message.Group] = append(c.Model.StableMessages[message.Group],
-			model.StableMessage{Content: pendingMessage.Content})
-
+		// c.Model.StableMessages[message.Group] = append(c.Model.StableMessages[message.Group], model.StableMessage{Content: pendingMessage.Content})
+		maps.Store(&c.Model.StableMessages, message.Group, append(maps.Load(&c.Model.StableMessages, message.Group), model.StableMessage{Content: pendingMessage.Content}))
 	}
 	// empties the pending buffer
-	c.Model.PendingMessages[message.Group] = []model.PendingMessage{}
+	//c.Model.PendingMessages[message.Group] = []model.PendingMessage{}
+	maps.Store(&c.Model.PendingMessages, message.Group, []model.PendingMessage{})
 	return newMessage
 }

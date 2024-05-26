@@ -120,7 +120,7 @@ func displayOpenGroup() {
 func displayGroup(group model.Group) {
 	MoveScreenUp()
 	color.Green("Previous messages in group:")
-	for _, message := range _controller.Model.StableMessages[group] {
+	for _, message := range maps.Load(&_controller.Model.StableMessages, group) {
 		color.Yellow(message.Content.Text)
 	}
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
@@ -172,7 +172,7 @@ func displayGroupMembers(group model.Group) {
 
 func UpdateGroup(group model.Group) {
 	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
-	var stableMessages = _controller.Model.StableMessages[group]
+	var stableMessages = maps.Load(&_controller.Model.StableMessages, group)
 	for _, message := range stableMessages[currentMessage:] {
 		userName := strings.Split(message.Client.Proc_id, "-")[0] + ": "
 		fmt.Print(groupUserColors[group][message.Client.Proc_id].Sprint(userName))

@@ -41,7 +41,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 		if slices.Contains(clients, client) {
 			c.Model.GroupsLocks[group].Lock()
 			stables[group] = c.Model.StableMessages[group]
-			pending[group] = c.Model.PendingMessages[group]
+			pending[group] = maps.Load(&c.Model.PendingMessages, group)
 		}
 	}
 	log.Trace("Sending connection restore message to ", client.Proc_id)
@@ -340,7 +340,8 @@ func (c *Controller) createGroup(group model.Group, consistencyModel model.Consi
 		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
 		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
 		// Intialize the map for message acks for the group
-		c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
+		//c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
+		maps.Store(&c.Model.MessageAcks, group, make(map[model.ScalarClockToProcId]map[string]bool))
 	}
 	return group
 }
