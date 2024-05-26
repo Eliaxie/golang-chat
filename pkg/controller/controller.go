@@ -196,7 +196,7 @@ func (c *Controller) StartRetryConnections() {
 	for {
 		for client, connected := range c.Model.Clients {
 			if ClientsReconnectSemaphore[client] == nil {
-				ClientsReconnectSemaphore[client] = make(chan int)
+				ClientsReconnectSemaphore[client] = make(chan int, 1)
 			}
 			// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
 			if !connected && strings.Compare(c.Model.Myself.Proc_id, client.Proc_id) > 0 {
