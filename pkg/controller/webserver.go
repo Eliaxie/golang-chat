@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"golang-chat/pkg/model"
 	"net/http"
 	"sync"
@@ -106,6 +107,8 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 			}
 			if !successfulUnlock {
 				log.Errorln("Failed to unlock clientWaitAck - client is disconnected")
+				// create new error message
+				return errors.New("PONG_TIMEOUT")
 			}
 		}
 
