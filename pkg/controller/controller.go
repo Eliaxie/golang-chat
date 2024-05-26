@@ -96,6 +96,7 @@ func (c *Controller) AddNewConnections(connection []string) {
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 	fmt.Println("Lost connection to client: ", disconnectedClient.ConnectionString)
 	defer func() {
+		log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
 		go c.StartRetryConnections(disconnectedClient)
 	}()
 	// actions to take regardless of the consistency model
@@ -204,6 +205,7 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 			if err != nil {
 				log.Trace("Failed to connect to ", client.ConnectionString)
 			} else {
+				log.Trace("Successfully reconnected to ", client.ConnectionString)
 				return
 			}
 		}
