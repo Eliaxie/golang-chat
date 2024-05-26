@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"sort"
 )
@@ -9,7 +10,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 
 	ownVectorClock := c.Model.GroupsVectorClocks[group]
 	// for each pending message
-	for pending_index, pendingMessage := range c.Model.PendingMessages[group] {
+	for pending_index, pendingMessage := range maps.Load(c.Model.PendingMessages, group) {
 		// for each client clock in the pending message
 		for proc_id, clientsClock := range pendingMessage.VectorClock.Clock {
 

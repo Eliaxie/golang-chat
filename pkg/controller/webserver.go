@@ -151,7 +151,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
-		ws.SetReadDeadline(time.Now().Add(PING_INTERVAL_MS * 4 * time.Millisecond))
+		ws.SetReadDeadline(time.Now().Add(PING_INTERVAL_MS * 100 * time.Millisecond))
 		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
