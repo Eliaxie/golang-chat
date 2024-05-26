@@ -29,7 +29,7 @@ func main() {
 	utils.LogInit(log.Level(level))
 
 	// initialize model
-	model := &model.Model{
+	_model := &model.Model{
 		// name of yourself
 		Myself: model.Client{},
 
@@ -62,9 +62,8 @@ func main() {
 	// initialize notifier
 	notifier := notify.NewNotifier()
 
-	_controller := controller.Controller{Model: model, Notifier: notifier}
+	_controller := controller.Controller{Model: _model, Notifier: notifier}
 
-	go _controller.StartRetryConnections()
 	go _controller.StartRetryMessages()
 
 	// starts view

@@ -96,7 +96,7 @@ func (c *Controller) AddNewConnections(connection []string) {
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 	fmt.Println("Lost connection to client: ", disconnectedClient.ConnectionString)
 	defer func() {
-		ClientsReconnectSemaphore[disconnectedClient] <- 1
+		go c.StartRetryConnections(disconnectedClient)
 	}()
 	// actions to take regardless of the consistency model
 
@@ -190,23 +190,21 @@ func (c *Controller) StartServer(port string, extIp string) {
 	InitWebServer(port, c)
 }
 
-var ClientsReconnectSemaphore = make(map[model.Client]chan int)
-
-func (c *Controller) StartRetryConnections() {
+func (c *Controller) StartRetryConnections(client model.Client) {
 	for {
-		for client, connected := range c.Model.Clients {
-			if ClientsReconnectSemaphore[client] == nil {
-				ClientsReconnectSemaphore[client] = make(chan int, 10)
-			}
-			// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
-			if !connected && strings.Compare(c.Model.Myself.Proc_id, client.Proc_id) > 0 {
-				log.Trace("Retrying connection to ", client.ConnectionString)
-				<-ClientsReconnectSemaphore[client]
-				client, err := c.Reconnect(client.ConnectionString)
-				if err != nil {
-					log.Trace("Failed to connect to ", client.ConnectionString)
-					ClientsReconnectSemaphore[client] <- 1
-				}
+		connected := c.Model.Clients[client]
+		if connected {
+			log.Error("Client ", client.Proc_id, " is already connected")
+			return
+		}
+		// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
+		if strings.Compare(c.Model.Myself.Proc_id, client.Proc_id) > 0 {
+			log.Trace("Retrying connection to ", client.ConnectionString)
+			client, err := c.Reconnect(client.ConnectionString)
+			if err != nil {
+				log.Trace("Failed to connect to ", client.ConnectionString)
+			} else {
+				return
 			}
 		}
 		time.Sleep(3000 * time.Millisecond)
