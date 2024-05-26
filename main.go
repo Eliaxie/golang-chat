@@ -55,7 +55,7 @@ func main() {
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsLocks:        make(map[model.Group]*sync.Mutex),
 
-		MessageExitBuffer:     make(map[model.Client][][]byte),
+		MessageExitBuffer:     make(map[model.Client][]model.MessageWithType),
 		MessageExitBufferLock: &sync.Mutex{},
 	}
 

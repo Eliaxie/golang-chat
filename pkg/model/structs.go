@@ -211,8 +211,13 @@ type Model struct {
 	GroupsVectorClocks map[Group]VectorClock
 	GroupsLocks        map[Group]*sync.Mutex // groups need to be locked when we are modifying Groups, Clients, VectorClocks, PendingMessages, StableMessages. Groups are also locked when a disconnection is happening or if the group is not in a majority partition. Groups are also locked when a reconnection is happening.
 
-	MessageExitBuffer     map[Client][][]byte
+	MessageExitBuffer     map[Client][]MessageWithType
 	MessageExitBufferLock *sync.Mutex
+}
+
+type MessageWithType struct {
+	MessageType MessageType `json:"messageType"`
+	Message     []byte      `json:"message"`
 }
 
 const (

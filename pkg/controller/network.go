@@ -15,11 +15,11 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 		log.Fatal("Error marshalling message: ", error)
 	}
 	c.Model.MessageExitBufferLock.Lock()
-	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], data)
+	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], model.MessageWithType{MessageType: message.GetMessageType(), Message: data})
 	c.Model.MessageExitBufferLock.Unlock()
 	log.Infoln("Sending message " + message.GetMessageType().String() + " to " + client.ConnectionString)
 	if controller.Model.Clients[client] || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
-		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client)
+		sendMessageSlave(c.Model.ClientWs[client.ConnectionString], client, c.Model.Clients[client])
 	} else {
 		log.Fatal("Error sending message: trying to send message to a client that is not connected. This should be handled above")
 	}
@@ -40,12 +40,6 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 		c.appendMsgToSortedPending(textMessage, c.Model.Myself)
 	}
 
-	activeClients := make([]model.Client, 0)
-	for _, client := range c.Model.Groups[group] {
-		if c.Model.Clients[client] {
-			activeClients = append(activeClients, client)
-		}
-	}
 	c.Model.GroupsLocks[group].Unlock()
-	c.multicastMessage(textMessage, activeClients)
+	c.multicastMessage(textMessage, c.Model.Groups[group])
 }

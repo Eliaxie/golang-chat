@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"golang-chat/pkg/model"
 	"net/http"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,8 @@ import (
 )
 
 var controller *Controller
+
+var websocketLock *sync.Mutex = &sync.Mutex{}
 
 func InitWebServer(port string, c *Controller) {
 	controller = c
@@ -33,7 +36,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 	header.Set("websocket-external-endpoint", origin)
 	ws, _, err := websocket.DefaultDialer.Dial(serverAddress, header)
 	if err != nil {
-		log.Traceln("Error dialing:", err)
+		log.Trace("Error dialing:", err)
 		return nil, err
 	}
 
@@ -47,7 +50,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 			}
 		}
 	} else {
-		c.Model.MessageExitBuffer[*client] = make([][]byte, 0)
+		c.Model.MessageExitBuffer[*client] = make([]model.MessageWithType, 0)
 	}
 	initializeClient(c.Model.Myself.Proc_id, client, reconnection)
 	go receiveLoop(ws, client)
@@ -58,23 +61,31 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 func ping(ws *websocket.Conn) {
 	for {
 		time.Sleep(200 * time.Millisecond)
+		websocketLock.Lock()
 		if err := ws.WriteMessage(2, []byte("ping")); err != nil {
 			log.Traceln(err)
+			websocketLock.Unlock()
 			return
 		}
+		websocketLock.Unlock()
 	}
 }
 
-func sendMessageSlave(ws *websocket.Conn, client model.Client) error {
+func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) error {
+	websocketLock.Lock()
+	defer websocketLock.Unlock()
 	controller.Model.MessageExitBufferLock.Lock()
 	defer controller.Model.MessageExitBufferLock.Unlock()
-	for _, msg := range controller.Model.MessageExitBuffer[client] {
-		if err := ws.WriteMessage(1, msg); err != nil {
-			log.Errorln(err)
+	for index, msg := range controller.Model.MessageExitBuffer[client] {
+		if !active && msg.MessageType == model.TEXT {
+			continue
+		}
+		if err := ws.WriteMessage(1, msg.Message); err != nil {
+			log.Errorln(err, client, ws.NetConn().RemoteAddr())
 			return err
 		}
-		controller.Model.MessageExitBuffer[client] = controller.Model.MessageExitBuffer[client][1:]
-		log.Debugln("Slave: Sent message:", string(msg))
+		controller.Model.MessageExitBuffer[client] = removeAtIndex(controller.Model.MessageExitBuffer[client], index)
+		log.Debugln("Slave: Sent message:", string(msg.Message)+" to "+client.ConnectionString)
 	}
 	return nil
 }
@@ -112,7 +123,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
-		ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
