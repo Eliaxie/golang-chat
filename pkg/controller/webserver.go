@@ -16,6 +16,8 @@ var controller *Controller
 
 var websocketLock *sync.Mutex = &sync.Mutex{}
 
+const PING_INTERVAL_MS = 100
+
 func InitWebServer(port string, c *Controller) {
 	controller = c
 	go startServer(port)
@@ -60,7 +62,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 
 func ping(ws *websocket.Conn) {
 	for {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(PING_INTERVAL_MS * time.Millisecond)
 		websocketLock.Lock()
 		if err := ws.WriteMessage(2, []byte("ping")); err != nil {
 			log.Traceln(err)
@@ -71,11 +73,16 @@ func ping(ws *websocket.Conn) {
 	}
 }
 
+var clientWaitAck map[model.Client]*sync.Mutex = make(map[model.Client]*sync.Mutex)
+
 func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) error {
 	websocketLock.Lock()
 	defer websocketLock.Unlock()
 	controller.Model.MessageExitBufferLock.Lock()
 	defer controller.Model.MessageExitBufferLock.Unlock()
+	if clientWaitAck[client] == nil {
+		clientWaitAck[client] = &sync.Mutex{}
+	}
 	index := 0
 	for _, msg := range controller.Model.MessageExitBuffer[client] {
 		if !active && msg.MessageType == model.TEXT {
@@ -86,6 +93,22 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 			log.Errorln(err, client, ws.NetConn().RemoteAddr())
 			return err
 		}
+
+		if msg.MessageType == model.TEXT {
+			clientWaitAck[client].Lock()
+			successfulUnlock := false
+			for i := 0; i < 10; i++ {
+				if clientWaitAck[client].TryLock() {
+					successfulUnlock = true
+					break
+				}
+				time.Sleep(PING_INTERVAL_MS / 2 * time.Millisecond)
+			}
+			if !successfulUnlock {
+				log.Errorln("Failed to unlock clientWaitAck - client is disconnected")
+			}
+		}
+
 		controller.Model.MessageExitBuffer[client] = removeAtIndex(controller.Model.MessageExitBuffer[client], index)
 		log.Debugln("Slave: Sent message:", string(msg.Message)+" to "+client.ConnectionString)
 	}
@@ -125,7 +148,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
-		ws.SetReadDeadline(time.Now().Add(60 * time.Second))
+		ws.SetReadDeadline(time.Now().Add(PING_INTERVAL_MS * 4 * time.Millisecond))
 		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
@@ -136,6 +159,13 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 		}
 		if messageType == 2 {
 			//ping
+			if clientWaitAck[*client] != nil {
+				if clientWaitAck[*client].TryLock() {
+					clientWaitAck[*client].Unlock()
+				} else {
+					clientWaitAck[*client].Unlock()
+				}
+			}
 			continue
 		}
 
