@@ -137,7 +137,8 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 
 					// initiate the disconnection ack array
 					acks := make(map[string]struct{})
-					c.Model.DisconnectionAcks[group] = acks
+					// c.Model.DisconnectionAcks[group] = acks
+					maps.Store(&c.Model.DisconnectionAcks, group, acks)
 					c.Model.DisconnectionLocks[group] = &sync.Mutex{}
 
 					// get all pending messages for group sent by disconnected client
