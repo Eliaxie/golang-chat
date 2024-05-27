@@ -23,12 +23,12 @@ func Start(c *controller.Controller) {
 	color.Green("Welcome to the chat app")
 	port := displayInsertPort()
 	extIp := displayInsertExtPort("ws://localhost:" + strconv.Itoa(port) + "/ws")
-	_controller.StartServer(strconv.Itoa(port), extIp)
-	log.Infoln("Server started on port ", port, "-> ", extIp)
 	username := displayInsertUsername()
 	Proc_id := username + "-" + _controller.GenerateUniqueID()
 	_controller.Model.Myself.Proc_id = Proc_id
 	log.Infoln("Username: ", Proc_id)
+	_controller.StartServer(strconv.Itoa(port), extIp)
+	log.Infoln("Server started on port ", port, "-> ", extIp)
 	displayMainMenu()
 }
 
@@ -130,4 +130,9 @@ func displayAddConnectionManually() {
 	}
 	_controller.WaitForConnection(pendingClient)
 	color.Green("Connected")
+}
+
+func DisplayString(str string) {
+	// print black string with green background
+	color.New(color.BgGreen, color.FgBlack).Println(str) 
 }
