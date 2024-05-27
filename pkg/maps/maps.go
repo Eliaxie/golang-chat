@@ -86,3 +86,16 @@ func Copy[T comparable, G any](_map *map[T]G) (keys []T, values []G) {
 	LockMap[_map].Unlock()
 	return keys, values
 }
+
+func Clone[T comparable, G any](_map *map[T]G) map[T]G {
+	if LockMap[_map] == nil {
+		LockMap[_map] = &sync.Mutex{}
+	}
+	LockMap[_map].Lock()
+	clone := make(map[T]G)
+	for k, v := range *_map {
+		clone[k] = v
+	}
+	LockMap[_map].Unlock()
+	return clone
+}
