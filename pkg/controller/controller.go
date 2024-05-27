@@ -37,7 +37,10 @@ func (c *Controller) Reconnect(connection string) (model.Client, error) {
 func (c *Controller) syncReconnectedClient(client model.Client, reconnection bool) {
 	stables := make(map[model.Group][]model.StableMessage)
 	pending := make(map[model.Group][]model.PendingMessage)
-	for group, clients := range c.Model.Groups {
+	// for group, clients := range c.Model.Groups {
+	allGroups, allClients := maps.KeysValues(&c.Model.Groups)
+	for index, group := range allGroups {
+		clients := allClients[index]
 		if slices.Contains(clients, client) {
 			c.Model.GroupsLocks[group].Lock()
 			stables[group] = c.Model.StableMessages[group]
@@ -55,12 +58,13 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 	i := 0
 	for group := range stables {
 		groups[i] = group
-		consistencyModels[i] = c.Model.GroupsConsistency[group]
+		consistencyModels[i] = maps.Load(&c.Model.GroupsConsistency, group)
 		serializedStables[i] = stables[group]
 		serializedPendings[i] = pending[group]
-		serializedVectorClocks[i] = c.Model.GroupsVectorClocks[group]
+		serializedVectorClocks[i] = maps.Load(&c.Model.GroupsVectorClocks, group)
 		if !reconnection {
-			for _, client := range c.Model.Groups[group] {
+			// for _, client := range c.Model.Groups[group] {
+			for _, client := range maps.Load(&c.Model.Groups, group) {
 				serializedClientsInGroups[i] = append(serializedClientsInGroups[i], model.SerializedClient{Proc_id: client.Proc_id, HostName: client.ConnectionString})
 				// TODO if connectionString for remote client == localhost -> check if remoteclientString is set and send that
 			}
@@ -80,8 +84,9 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 
 	//controller.Model.Clients[client] = true
 	maps.Store(&c.Model.Clients, client, true)
-
-	for group, clients := range c.Model.Groups {
+	allGroups, allClients = maps.KeysValues(&c.Model.Groups)
+	for index, group := range allGroups {
+		clients := allClients[index]
 		if slices.Contains(clients, client) {
 			c.Model.GroupsLocks[group].Unlock()
 		}
@@ -102,12 +107,13 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 		go c.StartRetryConnections(disconnectedClient)
 	}()
 	// actions to take regardless of the consistency model
-
-	for group, clients := range c.Model.Groups {
+	allGroups, allClients := maps.KeysValues(&c.Model.Groups)
+	for index, group := range allGroups {
+		clients := allClients[index]
 		for _, _client := range clients {
 			if _client == disconnectedClient {
 				// todo: think about group locks here
-				switch c.Model.GroupsConsistency[group] {
+				switch maps.Load(&c.Model.GroupsConsistency, group) {
 
 				case model.GLOBAL:
 					// if client is already marked as disconnected, do nothing
@@ -123,7 +129,7 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 					// todo: stop sending messages (locks?) and modifing group data
 					c.Model.GroupsLocks[group].Lock()
 					clientsToNotify := make([]model.Client, 0)
-					for _, activeClient := range c.Model.Groups[group] {
+					for _, activeClient := range maps.Load(&c.Model.Groups, group) {
 						if maps.Load(&c.Model.Clients, activeClient) {
 							clientsToNotify = append(clientsToNotify, activeClient)
 						}
@@ -169,7 +175,8 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 					}
 
 					// check if majority partitioned
-					if len(acks)+1 > (len(c.Model.Groups[group]))/2 {
+					// if len(acks)+1 > (len(c.Model.Groups[group]))/2 {
+					if len(acks)+1 > (len(maps.Load(&c.Model.Groups, group)))/2 {
 						log.Infoln("Group ", group.Name, " majority partitioned after client ", disconnectedClient.Proc_id, " disconnected")
 						// try to accept the messages with the new active window
 						c.tryAcceptTopGlobals(group)
@@ -277,7 +284,7 @@ func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Cl
 	// log.Debugln("Buffer Stable: ", string(_logS))
 
 	newMessage := true
-	switch c.Model.GroupsConsistency[message.Group] {
+	switch maps.Load(&c.Model.GroupsConsistency, message.Group) {
 	case model.CAUSAL:
 		pendingMessage := model.PendingMessage{Content: message.Content, Client: client, VectorClock: message.VectorClock}
 		c.Model.PendingMessages[message.Group] = append(c.Model.PendingMessages[message.Group], pendingMessage)
@@ -327,18 +334,24 @@ func (c *Controller) CreateGroup(groupName string, consistencyModel model.Consis
 
 func (c *Controller) createGroup(group model.Group, consistencyModel model.ConsistencyModel, clients []model.Client) model.Group {
 
-	c.Model.Groups[group] = clients
-	c.Model.GroupsConsistency[group] = consistencyModel
+	// c.Model.Groups[group] = clients
+	maps.Store(&c.Model.Groups, group, clients)
+	// c.Model.GroupsConsistency[group] = consistencyModel
+	maps.Store(&c.Model.GroupsConsistency, group, consistencyModel)
 	c.Model.GroupsLocks[group] = &sync.Mutex{}
-	c.Model.GroupsVectorClocks[group] = model.VectorClock{Clock: map[string]int{}}
+	maps.Store(&c.Model.GroupsVectorClocks, group, model.VectorClock{Clock: map[string]int{}})
 	switch consistencyModel {
 	case model.CAUSAL:
 		for _, client := range clients {
-			c.Model.GroupsVectorClocks[group].Clock[client.Proc_id] = 0
+			clock := maps.Load(&c.Model.GroupsVectorClocks, group)
+			clock.Clock[client.Proc_id] = 0
+			maps.Store(&c.Model.GroupsVectorClocks, group, clock)
 		}
 	case model.GLOBAL:
 		// In GLOBAL consistency model, the vector clock is used to keep track of the scalar clock of the group
-		c.Model.GroupsVectorClocks[group].Clock[c.Model.Myself.Proc_id] = 0
+		clock := maps.Load(&c.Model.GroupsVectorClocks, group)
+		clock.Clock[c.Model.Myself.Proc_id] = 0
+		maps.Store(&c.Model.GroupsVectorClocks, group, clock)
 		// Intialize the map for message acks for the group
 		//c.Model.MessageAcks[group] = make(map[model.ScalarClockToProcId]map[string]bool)
 		maps.Store(&c.Model.MessageAcks, group, make(map[model.ScalarClockToProcId]map[string]bool))

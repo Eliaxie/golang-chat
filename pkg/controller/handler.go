@@ -103,7 +103,7 @@ func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.Connect
 	for i, group := range connRestoreMsg.Groups {
 		switch connRestoreMsg.ConsistencyModel[i] {
 		case model.CAUSAL:
-			if c.Model.Groups[group] == nil {
+			if _, found := maps.LoadAndCheck(&c.Model.Groups, group); !found {
 				groupClients := make([]model.Client, 0)
 				for _, _remoteClient := range connRestoreMsg.SerializedClientsInGroups[i] {
 					clientToAdd := model.Client{Proc_id: _remoteClient.Proc_id, ConnectionString: _remoteClient.HostName}
@@ -135,9 +135,14 @@ func (c *Controller) HandleConnectionRestoreMessage(connRestoreMsg model.Connect
 					maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), message))
 				}
 			}
-			for proc := range c.Model.GroupsVectorClocks[group].Clock {
-				if connRestoreMsg.GroupsVectorClocks[i].Clock[proc] > c.Model.GroupsVectorClocks[group].Clock[proc] {
-					c.Model.GroupsVectorClocks[group].Clock[proc] = connRestoreMsg.GroupsVectorClocks[i].Clock[proc]
+			// for proc := range c.Model.GroupsVectorClocks[group].Clock {
+			var clock map[string]int
+			clock = maps.Load(&c.Model.GroupsVectorClocks, group).Clock
+
+			for _, proc := range maps.Keys(&clock) {
+				// if connRestoreMsg.GroupsVectorClocks[i].Clock[proc] > c.Model.GroupsVectorClocks[group].Clock[proc] {
+				if connRestoreMsg.GroupsVectorClocks[i].Clock[proc] > maps.Load(&clock, proc) {
+					maps.Store(&clock, proc, connRestoreMsg.GroupsVectorClocks[i].Clock[proc])
 				}
 			}
 			for _, message := range connRestoreMsg.PendingMessages[i] {
@@ -283,11 +288,15 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 		c.appendSortedPending(newPending, clientDisconnectMsg.Group)
 
 		// increment own clock
-		c.Model.GroupsVectorClocks[clientDisconnectMsg.Group].Clock[c.Model.Myself.Proc_id]++
+
+		// c.Model.GroupsVectorClocks[clientDisconnectMsg.Group].Clock[c.Model.Myself.Proc_id]++
+		clock := maps.Load(&c.Model.GroupsVectorClocks, clientDisconnectMsg.Group).Clock
+		maps.Store(&clock, c.Model.Myself.Proc_id, maps.Load(&clock, c.Model.Myself.Proc_id)+1)
 
 		// send acks if the message is new
 		activeClients := make([]model.Client, 0)
-		for _, groupMember := range c.Model.Groups[clientDisconnectMsg.Group] {
+		// for _, groupMember := range c.Model.Groups[clientDisconnectMsg.Group] {
+		for _, groupMember := range maps.Load(&c.Model.Groups, clientDisconnectMsg.Group) {
 			if maps.Load(&c.Model.Clients, groupMember) {
 				activeClients = append(activeClients, groupMember)
 			}

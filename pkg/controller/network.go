@@ -27,13 +27,15 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	c.Model.GroupsLocks[group].Lock()
-	vectorClock := c.Model.GroupsVectorClocks[group]
-	vectorClock.Clock[c.Model.Myself.Proc_id]++
+	// vectorClock := c.Model.GroupsVectorClocks[group]
+	vectorClock := maps.Load(&c.Model.GroupsVectorClocks, group)
+	maps.Store(&vectorClock.Clock, c.Model.Myself.Proc_id, vectorClock.Clock[c.Model.Myself.Proc_id]+1)
 	textMessage := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
 		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
 
-	if c.Model.GroupsConsistency[group] != model.GLOBAL {
+	// if c.Model.GroupsConsistency[group] != model.GLOBAL {
+	if maps.Load(&c.Model.GroupsConsistency, group) != model.GLOBAL {
 		//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself})
 		maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself}))
 		c.Notifier.Notify(group)
@@ -42,5 +44,6 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	}
 
 	c.Model.GroupsLocks[group].Unlock()
-	c.multicastMessage(textMessage, c.Model.Groups[group])
+	// c.multicastMessage(textMessage, c.Model.Groups[group])
+	c.multicastMessage(textMessage, maps.Load(&c.Model.Groups, group))
 }

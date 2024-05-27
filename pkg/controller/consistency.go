@@ -8,7 +8,7 @@ import (
 
 func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 
-	ownVectorClock := c.Model.GroupsVectorClocks[group]
+	ownVectorClock := maps.Load(&c.Model.GroupsVectorClocks, group)
 	// for each pending message
 	for pending_index, pendingMessage := range maps.Load(&c.Model.PendingMessages, group) {
 		// for each client clock in the pending message
@@ -29,9 +29,10 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 					//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
 					maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client}))
 
-					//c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], pending_index)
 					maps.Store(&c.Model.PendingMessages, group, removeAtIndex(maps.Load(&c.Model.PendingMessages, group), pending_index))
-					c.Model.GroupsVectorClocks[group].Clock[proc_id]++
+					clock := maps.Load(&c.Model.GroupsVectorClocks, group)
+					clock.Clock[proc_id]++
+					maps.Store(&c.Model.GroupsVectorClocks, group, clock)
 					c.tryAcceptCasualMessages(group)
 					return true
 				}
@@ -48,13 +49,14 @@ func removeAtIndex[T any](s []T, index int) []T {
 func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client model.Client) bool {
 	c.appendMsgToSortedPending(message, client)
 	// increment own clock
-	c.Model.GroupsVectorClocks[message.Group].Clock[c.Model.Myself.Proc_id]++
-
+	clock := maps.Load(&c.Model.GroupsVectorClocks, message.Group)
+	clock.Clock[c.Model.Myself.Proc_id]++
+	maps.Store(&c.Model.GroupsVectorClocks, message.Group, clock)
 	// multicast message ack to all group members
 	scalarClock := model.ScalarClockToProcId{Clock: message.VectorClock.Clock[client.Proc_id], Proc_id: client.Proc_id}
 
 	activeClients := make([]model.Client, 0)
-	for _, groupMember := range c.Model.Groups[message.Group] {
+	for _, groupMember := range maps.Load(&c.Model.Groups, message.Group) {
 		if maps.Load(&c.Model.Clients, groupMember) {
 			activeClients = append(activeClients, groupMember)
 		}
@@ -106,7 +108,7 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 
 	// inner functions that checks if all acks for a message have been received
 	checkAcks := func(pendingMessage model.PendingMessage) bool {
-		groupMembers := c.Model.Groups[group]
+		groupMembers := maps.Load(&c.Model.Groups, group)
 		for _, groupMember := range groupMembers {
 			if maps.Load(&c.Model.Clients, groupMember) {
 				// group member is active
