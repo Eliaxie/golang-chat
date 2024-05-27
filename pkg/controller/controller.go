@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"golang-chat/pkg/notify"
@@ -10,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -91,7 +91,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 			c.Model.GroupsLocks[group].Unlock()
 		}
 	}
-
+	c.Notifier.NotifyView("Connection restored to " + client.ConnectionString)
 }
 
 func (c *Controller) AddNewConnections(connection []string) {
@@ -101,7 +101,7 @@ func (c *Controller) AddNewConnections(connection []string) {
 }
 
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
-	fmt.Println("Lost connection to client: ", disconnectedClient.ConnectionString)
+	c.Notifier.NotifyView("Lost connection to client: " + disconnectedClient.ConnectionString)
 	defer func() {
 		log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
 		go c.StartRetryConnections(disconnectedClient)
@@ -221,6 +221,7 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 				log.Trace("Failed to connect to ", client.ConnectionString)
 			} else {
 				log.Trace("Successfully reconnected to ", client.ConnectionString)
+				c.Notifier.NotifyView("Successfully reconnected to "+client.ConnectionString, color.BgGreen)
 				return
 			}
 		}

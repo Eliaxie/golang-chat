@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -64,6 +65,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	if connectionFlow == model.FirstConnection {
 		//controller.Model.Clients[*client] = true
 		maps.Store(&c.Model.Clients, *client, true)
+		c.Notifier.NotifyView("Received connection from client "+client.Proc_id, color.BgGreen)
 	}
 
 	// Send reply INIT Message with my clientID
@@ -78,6 +80,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	} else if connectionFlow == model.ReconnectionNetwork {
 		//c.Model.Clients[*client] = true
 		maps.Store(&c.Model.Clients, *client, true)
+		c.Notifier.NotifyView("Reconnected to client "+client.Proc_id, color.BgGreen)
 	}
 
 }
@@ -223,6 +226,7 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	}
 
 	c.createGroup(groupCreateMsg.Group, groupCreateMsg.ConsistencyModel, _clients)
+	c.Notifier.NotifyView("Group "+groupCreateMsg.Group.Name+" was created by "+client.Proc_id, color.BgGreen)
 }
 
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {

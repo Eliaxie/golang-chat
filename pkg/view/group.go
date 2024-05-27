@@ -95,6 +95,7 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 		menuOptions = append(menuOptions, MenuOption{"[Create group]", func() {
 			_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
 			log.Infoln("Group " + groupInfo.GroupName + " created successfully")
+			DisplayString("Group "+groupInfo.GroupName+" created successfully", color.BgGreen)
 			adding = false
 		}})
 		// add back option
@@ -119,16 +120,13 @@ func displayOpenGroup() {
 
 func displayGroup(group model.Group) {
 	MoveScreenUp()
-	color.Green("Previous messages in group:")
-	for _, message := range maps.Load(&_controller.Model.StableMessages, group) {
-		color.Yellow(message.Content.Text)
-	}
-	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
-	_controller.Notifier.Listen(group, UpdateGroup)
 	if groupUserColors[group] == nil {
 		initializeGroupColors(group)
 	}
-
+	color.Green("Previous messages in group:")
+	UpdateGroup(group)
+	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
+	_controller.Notifier.Listen(group, UpdateGroup)
 	inputLoop(group)
 }
 

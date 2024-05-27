@@ -21,6 +21,7 @@ var _controller *controller.Controller
 func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
+	_controller.Notifier.ListenView(DisplayString)
 	port := displayInsertPort()
 	extIp := displayInsertExtPort("ws://localhost:" + strconv.Itoa(port) + "/ws")
 	username := displayInsertUsername()
@@ -129,10 +130,18 @@ func displayAddConnectionManually() {
 		return
 	}
 	_controller.WaitForConnection(pendingClient)
-	color.Green("Connected")
+	DisplayString("Connection added successfully", color.BgGreen, color.FgHiWhite)
 }
 
-func DisplayString(str string) {
+func DisplayString(str string, colors ...color.Attribute) {
 	// print black string with green background
-	color.New(color.BgGreen, color.FgBlack).Println(str) 
+	backgroundColor := color.BgYellow
+	textColor := color.FgHiWhite
+	if len(colors) >= 1 {
+		backgroundColor = colors[0]
+		if len(colors) >= 2 {
+			textColor = colors[1]
+		}
+	}
+	color.New(backgroundColor, textColor).Println(str)
 }

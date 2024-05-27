@@ -1,14 +1,12 @@
 package maps
 
 import (
-	"fmt"
 	"sync"
 )
 
 var LockMap map[interface{}]*sync.Mutex = make(map[interface{}]*sync.Mutex)
 
 func Store[T comparable, G any](_map *map[T]G, key T, value G) {
-	fmt.Println("Hash of map: ", _map)
 	if LockMap[_map] == nil {
 		LockMap[_map] = &sync.Mutex{}
 	}
