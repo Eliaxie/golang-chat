@@ -72,6 +72,21 @@ func Values[T comparable, G any](_map *map[T]G) []G {
 	return values
 }
 
+func KeysValues[T comparable, G any](_map *map[T]G) (keys []T, values []G) {
+	if LockMap[_map] == nil {
+		LockMap[_map] = &sync.Mutex{}
+	}
+	LockMap[_map].Lock()
+	keys = make([]T, 0, len(*_map))
+	values = make([]G, 0, len(*_map))
+	for k, v := range *_map {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+	LockMap[_map].Unlock()
+	return keys, values
+}
+
 func Copy[T comparable, G any](_map *map[T]G) (keys []T, values []G) {
 	if LockMap[_map] == nil {
 		LockMap[_map] = &sync.Mutex{}
