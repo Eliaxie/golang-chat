@@ -223,7 +223,7 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 func (c *Controller) StartRetryMessages() {
 	for {
 		c.Model.MessageExitBufferLock.Lock()
-		clientsTemp := c.Model.MessageExitBuffer
+		clientsTemp := maps.Clone(&c.Model.MessageExitBuffer)
 		c.Model.MessageExitBufferLock.Unlock()
 		for client := range clientsTemp {
 			if !maps.Load(&c.Model.Clients, client) {
@@ -231,10 +231,10 @@ func (c *Controller) StartRetryMessages() {
 			}
 
 			c.Model.MessageExitBufferLock.Lock()
-			oldLen := len(c.Model.MessageExitBuffer[client])
+			oldLen := len(maps.Load(&c.Model.MessageExitBuffer, client))
 			oldMsg := []byte{}
 			if oldLen != 0 {
-				oldMsg = c.Model.MessageExitBuffer[client][0].Message
+				oldMsg = maps.Load(&c.Model.MessageExitBuffer, client)[0].Message
 			}
 			c.Model.MessageExitBufferLock.Unlock()
 
@@ -246,9 +246,9 @@ func (c *Controller) StartRetryMessages() {
 			retryNeeded := false
 
 			c.Model.MessageExitBufferLock.Lock()
-			newLen := len(c.Model.MessageExitBuffer[client])
+			newLen := len(maps.Load(&c.Model.MessageExitBuffer, client))
 			if newLen >= oldLen {
-				if slices.Compare(oldMsg, c.Model.MessageExitBuffer[client][0].Message) == 0 {
+				if slices.Compare(oldMsg, maps.Load(&c.Model.MessageExitBuffer, client)[0].Message) == 0 {
 					log.Trace("Stale messages found in MessageExitBuffer, retrying... ", client.ConnectionString)
 					retryNeeded = true
 				}

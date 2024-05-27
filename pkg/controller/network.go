@@ -16,7 +16,8 @@ func (c *Controller) SendMessage(message model.Message, client model.Client) {
 		log.Fatal("Error marshalling message: ", error)
 	}
 	c.Model.MessageExitBufferLock.Lock()
-	c.Model.MessageExitBuffer[client] = append(c.Model.MessageExitBuffer[client], model.MessageWithType{MessageType: message.GetMessageType(), Message: data})
+	clientBuffer := maps.Load(&c.Model.MessageExitBuffer, client)
+	maps.Store(&c.Model.MessageExitBuffer, client, append(clientBuffer, model.MessageWithType{MessageType: message.GetMessageType(), Message: data}))
 	c.Model.MessageExitBufferLock.Unlock()
 	log.Infoln("Sending message " + message.GetMessageType().String() + " to " + client.ConnectionString)
 	if maps.Load(&controller.Model.Clients, client) || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {

@@ -55,7 +55,7 @@ func (c *Controller) addNewConnectionSlave(origin string, serverAddress string, 
 			}
 		}
 	} else {
-		c.Model.MessageExitBuffer[*client] = make([]model.MessageWithType, 0)
+		maps.Store(&c.Model.MessageExitBuffer, *client, make([]model.MessageWithType, 0))
 	}
 	initializeClient(c.Model.Myself.Proc_id, client, reconnection)
 	go receiveLoop(ws, client)
@@ -87,7 +87,7 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 		clientWaitAck[client] = &sync.Mutex{}
 	}
 	index := 0
-	for _, msg := range controller.Model.MessageExitBuffer[client] {
+	for _, msg := range maps.Load(&controller.Model.MessageExitBuffer, client) {
 		if !active && msg.MessageType == model.TEXT {
 			index++
 			continue
@@ -114,7 +114,8 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 			}
 		}
 
-		controller.Model.MessageExitBuffer[client] = removeAtIndex(controller.Model.MessageExitBuffer[client], index)
+		array := maps.Load(&controller.Model.MessageExitBuffer, client)
+		maps.Store(&controller.Model.MessageExitBuffer, client, removeAtIndex(array, index))
 		log.Debugln("Slave: Sent message:", string(msg.Message)+" to "+client.ConnectionString)
 	}
 	return nil

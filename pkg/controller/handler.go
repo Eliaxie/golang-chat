@@ -57,7 +57,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 	if connectionFlow == model.FirstConnection {
 		client.Proc_id = connInitMsg.ClientID
 		client.ConnectionString = connInitMsg.ServerIp
-		c.Model.MessageExitBuffer[*client] = make([]model.MessageWithType, 0)
+		maps.Store(&c.Model.MessageExitBuffer, *client, make([]model.MessageWithType, 0))
 	}
 	//delete(controller.Model.PendingClients, oldConnectionString)
 	maps.Delete(&c.Model.PendingClients, oldConnectionString)
