@@ -17,9 +17,11 @@ import (
 
 var reader = bufio.NewReader(os.Stdin)
 var _controller *controller.Controller
+var logging bool = false
 
-func Start(c *controller.Controller) {
+func Start(c *controller.Controller, _logging bool) {
 	_controller = c
+	logging = _logging
 	color.Green("Welcome to the chat app")
 	_controller.Notifier.ListenView(DisplayString)
 	port := displayInsertPort()
@@ -134,6 +136,9 @@ func displayAddConnectionManually() {
 }
 
 func DisplayString(str string, colors ...color.Attribute) {
+	if logging {
+		return
+	}
 	// print black string with green background
 	backgroundColor := color.BgYellow
 	textColor := color.FgHiWhite
