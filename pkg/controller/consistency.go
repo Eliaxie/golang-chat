@@ -4,6 +4,8 @@ import (
 	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"sort"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
@@ -22,6 +24,7 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 					// proc_id = b, otherProc_id = c, otherClientsClock = 3, VectorClock.Clock[otherProc_id] = 1
 					if otherProc_id != proc_id && ownClientsClock < pendingMessage.VectorClock.Clock[otherProc_id] {
 						everyOtherIsLower = false
+						log.Trace("Not accepting message: ", pendingMessage.Content, " because ", otherProc_id, " has clock ", ownClientsClock, " and the message has clock ", pendingMessage.VectorClock.Clock[otherProc_id])
 						break
 					}
 				}
@@ -38,6 +41,10 @@ func (c *Controller) tryAcceptCasualMessages(group model.Group) bool {
 				}
 			}
 		}
+	}
+
+	if len(maps.Load(&c.Model.PendingMessages, group)) != 0 {
+		log.Trace("Refused messages", maps.Load(&c.Model.PendingMessages, group), "with clock", ownVectorClock)
 	}
 	return false
 }
