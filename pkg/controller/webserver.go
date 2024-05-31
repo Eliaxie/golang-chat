@@ -100,7 +100,7 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 		if msg.MessageType == model.TEXT {
 			clientWaitAck[client].Lock()
 			successfulUnlock := false
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 20; i++ {
 				if clientWaitAck[client].TryLock() {
 					successfulUnlock = true
 					break
@@ -162,10 +162,7 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 		if err != nil {
 			log.Errorln(err)
 			ws.Close()
-			//todo: here we handle disconnections is every error a disconnection?
-			if maps.Load(&controller.Model.Clients, *client) {
-				controller.DisconnectClient(*client)
-			}
+			controller.DisconnectClient(*client)
 			break
 		}
 		if messageType == 2 {

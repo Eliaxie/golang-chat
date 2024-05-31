@@ -103,7 +103,9 @@ func (c *Controller) AddNewConnections(connection []string) {
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 	c.Notifier.NotifyView("Lost connection to client: " + disconnectedClient.ConnectionString)
 	defer func() {
-		log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
+		if maps.Load(&c.Model.Clients, disconnectedClient) {
+			log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
+		}
 		go c.StartRetryConnections(disconnectedClient)
 	}()
 	// actions to take regardless of the consistency model
@@ -207,10 +209,12 @@ func (c *Controller) StartServer(port string, extIp string) {
 
 func (c *Controller) StartRetryConnections(client model.Client) {
 	for {
+		time.Sleep(3000 * time.Millisecond)
+
 		//connected := c.Model.Clients[client]
 		connected := maps.Load(&c.Model.Clients, client)
 		if connected {
-			log.Error("Client ", client.Proc_id, " is already connected")
+			log.Info("Client ", client.Proc_id, " is already connected - Stop retrying")
 			return
 		}
 		// we retry only if the client is not connected and the client is lexicographically smaller than the current client to avoid cycles
@@ -225,7 +229,6 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 				return
 			}
 		}
-		time.Sleep(3000 * time.Millisecond)
 	}
 }
 
