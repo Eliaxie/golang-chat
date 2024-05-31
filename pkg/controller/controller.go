@@ -211,6 +211,7 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 		time.Sleep(3000 * time.Millisecond)
 
 		//connected := c.Model.Clients[client]
+
 		connected := maps.Load(&c.Model.Clients, client)
 		if connected {
 			log.Info("Client ", client.Proc_id, " is already connected - Stop retrying")
@@ -223,7 +224,7 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 			if err != nil {
 				log.Trace("Failed to connect to ", client.ConnectionString)
 			} else {
-				log.Trace("Successfully reconnected to ", client.ConnectionString)
+				log.Trace("Successfully reconnected to ", client.ConnectionString, " with id: ", client.Proc_id)
 				return
 			}
 		}
