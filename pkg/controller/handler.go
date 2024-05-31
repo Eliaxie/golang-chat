@@ -96,7 +96,7 @@ func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.C
 		return
 	}
 	log.Debug("Connection accepted by ", client)
-	c.Notifier.NotifyView("Connection established to client"+client.ConnectionString+" with id: "+connInitRespMsg.ClientID, color.BgGreen)
+	c.Notifier.NotifyView("Connection established to client "+client.ConnectionString+" with id: "+connInitRespMsg.ClientID, color.BgGreen)
 	//delete(controller.Model.PendingClients, client.ConnectionString)
 	maps.Delete(&c.Model.PendingClients, client.ConnectionString)
 	client.Proc_id = connInitRespMsg.ClientID
