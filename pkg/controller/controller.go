@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -225,7 +224,6 @@ func (c *Controller) StartRetryConnections(client model.Client) {
 				log.Trace("Failed to connect to ", client.ConnectionString)
 			} else {
 				log.Trace("Successfully reconnected to ", client.ConnectionString)
-				c.Notifier.NotifyView("Successfully reconnected to "+client.ConnectionString, color.BgGreen)
 				return
 			}
 		}
