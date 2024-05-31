@@ -100,7 +100,7 @@ func (c *Controller) AddNewConnections(connection []string) {
 }
 
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
-	if maps.Load(&c.Model.Clients, disconnectedClient) || true {
+	if maps.Load(&c.Model.Clients, disconnectedClient) {
 		c.Notifier.NotifyView("Lost connection to client: " + disconnectedClient.ConnectionString)
 	}
 	defer func() {
