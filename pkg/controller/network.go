@@ -29,8 +29,7 @@ func (c *Controller) SendGroupMessage(text string, group model.Group) {
 	c.Model.GroupsLocks[group].Lock()
 	// vectorClock := c.Model.GroupsVectorClocks[group]
 	vectorClockStruct := maps.Load(&c.Model.GroupsVectorClocks, group)
-	// maps.Store(&vectorClockStruct.Clock, c.Model.Myself.Proc_id, maps.Load(&vectorClockStruct.Clock, c.Model.Myself.Proc_id)+1)
-
+	maps.Store(&vectorClockStruct.Clock, c.Model.Myself.Proc_id, maps.Load(&vectorClockStruct.Clock, c.Model.Myself.Proc_id)+1)
 	vectorClock := maps.Clone(&vectorClockStruct.Clock)
 	textMessage := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
