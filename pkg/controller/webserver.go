@@ -202,7 +202,10 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 			if err := json.Unmarshal(data, &connInitMsg); err != nil {
 				log.Error("Error parsing ConnectionInitMessage:", err)
 			} else {
-				controller.HandleConnectionInitMessage(connInitMsg, client)
+				err := controller.HandleConnectionInitMessage(connInitMsg, client)
+				if err != nil {
+					return
+				}
 			}
 
 		case model.CONN_INIT_RESPONSE:

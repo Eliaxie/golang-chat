@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"slices"
@@ -15,7 +16,7 @@ var clientReconnectionSynchronizationLock sync.Mutex
 // map to track clients that are already connecting
 var handleConnectionLock sync.Mutex
 
-func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) {
+func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionInitMessage, client *model.Client) error {
 	handleConnectionLock.Lock()
 	defer handleConnectionLock.Unlock()
 
@@ -51,7 +52,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 			Refused:     true,
 		}, *client)
 		maps.Load(&c.Model.ClientWs, client.ConnectionString).Close()
-		return
+		return errors.New("connection refused")
 	}
 
 	log.Debug("Connecting client: ", connInitMsg.ClientID, " ", client.ConnectionString, " Reconnection: ", reconnection, " connectionInit.Reconnection: ", connInitMsg.Reconnection)
@@ -83,6 +84,7 @@ func (c *Controller) HandleConnectionInitMessage(connInitMsg model.ConnectionIni
 		c.Notifier.NotifyView("Reconnected to client "+client.Proc_id, color.BgGreen)
 	}
 
+	return nil
 }
 
 func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.ConnectionInitResponseMessage, client *model.Client) {
@@ -94,7 +96,7 @@ func (c *Controller) HandleConnectionInitResponseMessage(connInitRespMsg model.C
 		return
 	}
 	log.Debug("Connection accepted by ", client)
-	c.Notifier.NotifyView("Connection established to client"+client.ConnectionString+" with id: " + connInitRespMsg.ClientID, color.BgGreen)
+	c.Notifier.NotifyView("Connection established to client"+client.ConnectionString+" with id: "+connInitRespMsg.ClientID, color.BgGreen)
 	//delete(controller.Model.PendingClients, client.ConnectionString)
 	maps.Delete(&c.Model.PendingClients, client.ConnectionString)
 	client.Proc_id = connInitRespMsg.ClientID

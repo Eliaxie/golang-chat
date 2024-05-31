@@ -100,11 +100,11 @@ func (c *Controller) AddNewConnections(connection []string) {
 }
 
 func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
-	c.Notifier.NotifyView("Lost connection to client: " + disconnectedClient.ConnectionString)
+	if maps.Load(&c.Model.Clients, disconnectedClient) || true {
+		c.Notifier.NotifyView("Lost connection to client: " + disconnectedClient.ConnectionString)
+	}
 	defer func() {
-		if maps.Load(&c.Model.Clients, disconnectedClient) {
-			log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
-		}
+		log.Debug("Starting retry connections for ", disconnectedClient.ConnectionString)
 		go c.StartRetryConnections(disconnectedClient)
 	}()
 	// actions to take regardless of the consistency model
