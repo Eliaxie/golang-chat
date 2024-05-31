@@ -109,7 +109,6 @@ func sendMessageSlave(ws *websocket.Conn, client model.Client, active bool) erro
 			}
 			if !successfulUnlock {
 				log.Errorln("Failed to unlock clientWaitAck - client is disconnected")
-				// create new error message
 				return errors.New("PONG_TIMEOUT")
 			}
 		}
@@ -164,7 +163,9 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 			log.Errorln(err)
 			ws.Close()
 			//todo: here we handle disconnections is every error a disconnection?
-			controller.DisconnectClient(*client)
+			if maps.Load(&controller.Model.Clients, *client) {
+				controller.DisconnectClient(*client)
+			}
 			break
 		}
 		if messageType == 2 {
