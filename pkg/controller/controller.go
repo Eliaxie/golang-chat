@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -90,7 +91,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 			c.Model.GroupsLocks[group].Unlock()
 		}
 	}
-	c.Notifier.NotifyView("Connection restored to " + client.ConnectionString)
+	c.Notifier.NotifyView("Connection restored to " + client.ConnectionString, color.BgGreen)
 }
 
 func (c *Controller) AddNewConnections(connection []string) {
