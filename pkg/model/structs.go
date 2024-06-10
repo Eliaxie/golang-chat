@@ -3,7 +3,7 @@ package model
 import (
 	"sync"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 type ConsistencyModel int
@@ -28,7 +28,41 @@ const (
 	SYNC_PEERS_RESPONSE
 	GROUP_CREATE
 	MESSAGE_ACK
+	CLIENT_DISC
+	DISC_ACK
 )
+
+type ConnectionFlow int
+
+const (
+	FirstConnection ConnectionFlow = iota
+	ReconnectionNetwork
+	ReconnectionPeerCrashed
+	ReconnectionSelfCrashed
+)
+
+func (m MessageType) String() string {
+	names := [...]string{
+		"BASE",
+		"TEXT",
+		"CONN_INIT",
+		"CONN_INIT_RESPONSE",
+		"CONN_RESTORE",
+		"CONN_RESTORE_RESPONSE",
+		"SYNC_PEERS",
+		"SYNC_PEERS_RESPONSE",
+		"GROUP_CREATE",
+		"MESSAGE_ACK",
+		"CLIENT_DISC",
+		"DISC_ACK",
+	}
+
+	if m < BASE || m > DISC_ACK {
+		return "UNKNOWN"
+	}
+
+	return names[m]
+}
 
 type Message interface {
 	GetMessageType() MessageType
@@ -72,12 +106,14 @@ type TextMessage struct {
 
 type ConnectionInitMessage struct {
 	BaseMessage
-	ClientID   string `json:"clientId"`
-	ServerPort string `json:"serverPort"`
+	ClientID     string `json:"clientId"`
+	ServerIp     string `json:"serverPort"`
+	Reconnection bool   `json:"reconnect"`
 }
 
 type ConnectionInitResponseMessage struct {
 	BaseMessage
+	Refused  bool   `json:"refused"`
 	ClientID string `json:"clientId"`
 }
 
@@ -87,14 +123,33 @@ type MessageAck struct {
 	Reference ScalarClockToProcId `json:"reference"`
 }
 
+type ClientDisconnectMessage struct {
+	BaseMessage
+	Group           Group            `json:"group"`    // group from which client disconnected
+	Client          SerializedClient `json:"clientId"` // client that disconnected
+	PendingMessages []PendingMessage `json:"pendingMessages"`
+}
+
+type DisconnectAckMessage struct {
+	BaseMessage
+	Group    Group  `json:"group"`
+	ClientID string `json:"clientId"`
+}
+
 type ConnectionRestoreMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
+	StableMessages            [][]StableMessage    `json:"stableMessages"`
+	PendingMessages           [][]PendingMessage   `json:"pendingMessages"`
+	Groups                    []Group              `json:"group"`
+	SerializedClientsInGroups [][]SerializedClient `json:"serializedClientsInGroups"`
+	ConsistencyModel          []ConsistencyModel   `json:"consistencyModel"`
+
+	//Causal
+	GroupsVectorClocks []VectorClock `json:"groupsVectorClocks"`
 }
 
 type ConnectionRestoreResponseMessage struct {
 	BaseMessage
-	ClientID string `json:"clientId"`
 }
 
 type Client struct {
@@ -129,7 +184,7 @@ type PendingMessage struct {
 	ScalarClock ScalarClockToProcId
 }
 
-type StableMessages struct {
+type StableMessage struct {
 	Client  Client
 	Content UniqueMessage
 }
@@ -143,16 +198,26 @@ type Model struct {
 	ClientWs map[string]*websocket.Conn
 	// map client_endpoint -> client (before client init)
 	PendingClients  map[string]struct{}
-	Clients         map[Client]bool
+	Clients         map[Client]bool // map client -> bool (false if client is disconnected or not in the map)
 	PendingMessages map[Group][]PendingMessage
 	// group -> scalarClock -> array proc_id from which acks were received
 	MessageAcks    map[Group]map[ScalarClockToProcId]map[string]bool
-	StableMessages map[Group][]StableMessages
+	StableMessages map[Group][]StableMessage
 
+	DisconnectionAcks  map[Group]map[string]struct{} // maps group -> clients that sent back an ack
+	DisconnectionLocks map[Group]*sync.Mutex         // locks for when we are waiting for acks and accesing Client Array
 	Groups             map[Group][]Client
 	GroupsConsistency  map[Group]ConsistencyModel
 	GroupsVectorClocks map[Group]VectorClock
-	GroupsLocks        map[Group]*sync.Mutex
+	GroupsLocks        map[Group]*sync.Mutex // groups need to be locked when we are modifying Groups, Clients, VectorClocks, PendingMessages, StableMessages. Groups are also locked when a disconnection is happening or if the group is not in a majority partition. Groups are also locked when a reconnection is happening.
+
+	MessageExitBuffer     map[Client][]MessageWithType
+	MessageExitBufferLock *sync.Mutex
+}
+
+type MessageWithType struct {
+	MessageType MessageType `json:"messageType"`
+	Message     []byte      `json:"message"`
 }
 
 const (

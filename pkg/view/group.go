@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 	"strings"
 
@@ -62,6 +63,11 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 		var menuOptions []MenuOption
 		for client := range _controller.Model.Clients {
 
+			// check if client is connected
+			if !maps.Load(&_controller.Model.Clients, client) {
+				continue
+			}
+
 			// check if the client is already in the list of clients to add
 			found := func() bool {
 				for _, val := range clientsToAdd {
@@ -77,7 +83,7 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 			}
 
 			// check if client is connected
-			if !_controller.Model.Clients[client] {
+			if !maps.Load(&_controller.Model.Clients, client) {
 				continue
 			}
 
@@ -89,6 +95,7 @@ func displayAddClientsToGroup(groupInfo GroupCreationInfo) {
 		menuOptions = append(menuOptions, MenuOption{"[Create group]", func() {
 			_controller.CreateGroup(groupInfo.GroupName, groupInfo.ConsistencyModel, clientsToAdd)
 			log.Infoln("Group " + groupInfo.GroupName + " created successfully")
+			DisplayString("Group "+groupInfo.GroupName+" created successfully", color.BgGreen)
 			adding = false
 		}})
 		// add back option
@@ -104,7 +111,7 @@ func displayOpenGroup() {
 
 	// list of groups as MenuOptions
 	var groups []MenuOption
-	for group := range _controller.Model.Groups {
+	for _, group := range maps.Keys(&_controller.Model.Groups) {
 		groups = append(groups, MenuOption{group.Name, func() { displayGroup(group) }})
 	}
 	groups = append(groups, MenuOption{"Back", displayMainMenu})
@@ -113,22 +120,20 @@ func displayOpenGroup() {
 
 func displayGroup(group model.Group) {
 	MoveScreenUp()
-	color.Green("Previous messages in group:")
-	for _, message := range _controller.Model.StableMessages[group] {
-		color.Yellow(message.Content.Text)
-	}
-	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
-	_controller.Notifier.Listen(group, UpdateGroup)
 	if groupUserColors[group] == nil {
 		initializeGroupColors(group)
 	}
-
+	color.Green("Previous messages in group:")
+	UpdateGroup(group)
+	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
+	_controller.Notifier.Listen(group, UpdateGroup)
 	inputLoop(group)
 }
 
 func initializeGroupColors(group model.Group) {
 	groupUserColors[group] = make(map[string]*color.Color)
-	clients := _controller.Model.Groups[group]
+	// clients := _controller.Model.Groups[group]
+	clients := maps.Load(&_controller.Model.Groups, group)
 	for _, client := range clients {
 		groupUserColors[group][client.Proc_id] = color.New(RandomColor())
 	}
@@ -155,14 +160,19 @@ func inputLoop(group model.Group) {
 
 func displayGroupMembers(group model.Group) {
 	color.Green("Members of group %s", group)
-	for _, client := range _controller.Model.Groups[group] {
-		color.White("- %s", client.Proc_id)
+	// for _, client := range _controller.Model.Groups[group] {
+	for _, client := range maps.Load(&_controller.Model.Groups, group) {
+		if maps.Load(&_controller.Model.Clients, client) || client == _controller.Model.Myself {
+			color.White("- %s", client.Proc_id)
+		} else {
+			color.Red("disc - %s", client.Proc_id)
+		}
 	}
 }
 
 func UpdateGroup(group model.Group) {
 	log.Debugln("Updating group " + group.Name + " made by " + group.Madeby)
-	var stableMessages = _controller.Model.StableMessages[group]
+	var stableMessages = maps.Load(&_controller.Model.StableMessages, group)
 	for _, message := range stableMessages[currentMessage:] {
 		userName := strings.Split(message.Client.Proc_id, "-")[0] + ": "
 		fmt.Print(groupUserColors[group][message.Client.Proc_id].Sprint(userName))

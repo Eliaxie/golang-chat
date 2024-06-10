@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/websocket"
 
 	"golang-chat/pkg/view"
 )
@@ -29,7 +29,7 @@ func main() {
 	utils.LogInit(log.Level(level))
 
 	// initialize model
-	model := &model.Model{
+	_model := &model.Model{
 		// name of yourself
 		Myself: model.Client{},
 
@@ -43,21 +43,28 @@ func main() {
 		// messages that have been received or sent but not yet trasmitted to the app level
 		PendingMessages: make(map[model.Group][]model.PendingMessage),
 		// messages shown to the users
-		StableMessages: make(map[model.Group][]model.StableMessages),
+		StableMessages: make(map[model.Group][]model.StableMessage),
 		// list of acks for each message
 		MessageAcks: make(map[model.Group]map[model.ScalarClockToProcId]map[string]bool),
 
 		// groups
 		Groups:             make(map[model.Group][]model.Client),
+		DisconnectionAcks:  make(map[model.Group]map[string]struct{}),
+		DisconnectionLocks: make(map[model.Group]*sync.Mutex),
 		GroupsConsistency:  make(map[model.Group]model.ConsistencyModel),
 		GroupsVectorClocks: make(map[model.Group]model.VectorClock),
 		GroupsLocks:        make(map[model.Group]*sync.Mutex),
+
+		MessageExitBuffer:     make(map[model.Client][]model.MessageWithType),
+		MessageExitBufferLock: &sync.Mutex{},
 	}
 
 	// initialize notifier
 	notifier := notify.NewNotifier()
 
-	_controller := controller.Controller{Model: model, Notifier: notifier}
+	_controller := controller.Controller{Model: _model, Notifier: notifier}
+
+	go _controller.StartRetryMessages()
 
 	// starts view
 	view.Start(&_controller)

@@ -69,14 +69,12 @@ func ClearScreen() {
 // takes a list of colors to avoid and returns a random color string
 func RandomColor() color.Attribute {
 	colors := []color.Attribute{
-		color.FgBlack,
 		color.FgRed,
 		color.FgGreen,
 		color.FgYellow,
 		color.FgBlue,
 		color.FgMagenta,
 		color.FgCyan,
-		color.FgWhite,
 	}
 	return colors[rand.Intn(len(colors))]
 }

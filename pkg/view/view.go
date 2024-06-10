@@ -21,13 +21,15 @@ var _controller *controller.Controller
 func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
+	_controller.Notifier.ListenView(DisplayString)
 	port := displayInsertPort()
-	_controller.StartServer(strconv.Itoa(port))
-	log.Infoln("Server started on port ", port)
+	extIp := displayInsertExtPort("ws://localhost:" + strconv.Itoa(port) + "/ws")
 	username := displayInsertUsername()
 	Proc_id := username + "-" + _controller.GenerateUniqueID()
-	_controller.Model.Myself = model.Client{Proc_id: Proc_id}
+	_controller.Model.Myself.Proc_id = Proc_id
 	log.Infoln("Username: ", Proc_id)
+	_controller.StartServer(strconv.Itoa(port), extIp)
+	log.Infoln("Server started on port ", port, "-> ", extIp)
 	displayMainMenu()
 }
 
@@ -36,6 +38,19 @@ func displayInsertPort() int {
 	val, err := ReadInt()
 	if err != nil {
 		val = model.DEFAULT_PORT
+	}
+	return val
+}
+
+func displayInsertExtPort(localIp string) string {
+	defIp, ok := os.LookupEnv("GOLANGCHAT_DEFAULT_EXTERNALIP")
+	if !ok {
+		defIp = localIp
+	}
+	fmt.Print("Enter external ip (default: ", defIp, "): ")
+	val := ReadStringTrimmed()
+	if val == "" {
+		val = defIp
 	}
 	return val
 }
@@ -93,18 +108,40 @@ func displayAddConnectionFromFile() {
 
 func displayAddConnectionManually() {
 	MoveScreenUp()
-	fmt.Print("Enter Connection (default: ", model.DEFAULT_CONNECTION, ")(\"q\" to go back): ")
+	defConnection, ok := os.LookupEnv("GOLANGCHAT_DEFAULT_INITIALCONNECTION")
+	if !ok {
+		// Handle the case where the environment variable is not set
+		defConnection = model.DEFAULT_CONNECTION
+	}
+
+	fmt.Print("Enter Connection (default: ", defConnection, ")(\"q\" to go back): ")
 	connection := ReadStringTrimmed()
 	if connection == "q" {
 		return
 	}
 	if connection == "" {
-		connection = model.DEFAULT_CONNECTION
+		connection = defConnection
 	}
 
 	// call the function to add the connection
-	log.Debugln(connection)
-	pendingClient := _controller.AddNewConnection(connection)
+	pendingClient, err := _controller.AddNewConnection(connection)
+	if err != nil {
+		log.Errorln("Error adding new connection", err)
+		return
+	}
 	_controller.WaitForConnection(pendingClient)
-	color.Green("Connected")
+	DisplayString("Connection added successfully", color.BgGreen, color.FgHiWhite)
+}
+
+func DisplayString(str string, colors ...color.Attribute) {
+	// print black string with green background
+	backgroundColor := color.BgYellow
+	textColor := color.FgHiWhite
+	if len(colors) >= 1 {
+		backgroundColor = colors[0]
+		if len(colors) >= 2 {
+			textColor = colors[1]
+		}
+	}
+	color.New(backgroundColor, textColor).Println(str)
 }

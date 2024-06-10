@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"golang-chat/pkg/maps"
 	"golang-chat/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -9,52 +10,41 @@ import (
 	"github.com/google/uuid"
 )
 
-// Only send function not checking if client is in the model
-func (c *Controller) SendInitMessage(message model.ConnectionInitMessage, client model.Client) {
-	data, _ := json.Marshal(message)
-	log.Debugln(string(data))
-	sendMessageSlave(controller.Model.ClientWs[client.ConnectionString], data)
-}
-
 func (c *Controller) SendMessage(message model.Message, client model.Client) {
-	if !controller.Model.Clients[client] {
-		return
+	data, error := json.Marshal(message)
+	if error != nil {
+		log.Fatal("Error marshalling message: ", error)
 	}
-	data, _ := json.Marshal(message)
-	log.Debugln(string(data))
-	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
-}
-
-func (c *Controller) SendTextMessage(text string, client model.Client) {
-	if !c.Model.Clients[client] {
-		return
-	}
-	msg := model.TextMessage{
-		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: model.Group{Name: "default", Madeby: "default"}, VectorClock: model.VectorClock{}}
-	data, _ := json.Marshal(msg)
-	println("Sending message:", string(data))
-	sendMessageSlave(c.Model.ClientWs[client.ConnectionString], data)
-}
-
-func (c *Controller) BroadcastMessage(text string) {
-	for client := range c.Model.Clients {
-		c.SendTextMessage(text, client)
+	c.Model.MessageExitBufferLock.Lock()
+	clientBuffer := maps.Load(&c.Model.MessageExitBuffer, client)
+	maps.Store(&c.Model.MessageExitBuffer, client, append(clientBuffer, model.MessageWithType{MessageType: message.GetMessageType(), Message: data}))
+	c.Model.MessageExitBufferLock.Unlock()
+	log.Infoln("Sending message " + message.GetMessageType().String() + " to client: " + client.ConnectionString + " with id:" + client.Proc_id)
+	if maps.Load(&controller.Model.Clients, client) || message.GetMessageType() == model.CONN_RESTORE || message.GetMessageType() == model.CONN_INIT || message.GetMessageType() == model.CONN_INIT_RESPONSE {
+		sendMessageSlave(maps.Load(&c.Model.ClientWs, client.ConnectionString), client, maps.Load(&c.Model.Clients, client))
 	}
 }
 
 func (c *Controller) SendGroupMessage(text string, group model.Group) {
-	vectorClock := c.Model.GroupsVectorClocks[group]
-	vectorClock.Clock[c.Model.Myself.Proc_id]++
+	c.Model.GroupsLocks[group].Lock()
+	// vectorClock := c.Model.GroupsVectorClocks[group]
+	vectorClockStruct := maps.Load(&c.Model.GroupsVectorClocks, group)
+	maps.Store(&vectorClockStruct.Clock, c.Model.Myself.Proc_id, maps.Load(&vectorClockStruct.Clock, c.Model.Myself.Proc_id)+1)
+	vectorClock := maps.Clone(&vectorClockStruct.Clock)
 	textMessage := model.TextMessage{
 		BaseMessage: model.BaseMessage{MessageType: model.TEXT},
-		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: vectorClock}
+		Content:     model.UniqueMessage{Text: text, UUID: uuid.New().String()}, Group: group, VectorClock: model.VectorClock{Clock: vectorClock}}
 
-	if c.Model.GroupsConsistency[group] != model.GLOBAL {
-		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessages{Content: textMessage.Content, Client: c.Model.Myself})
+	// if c.Model.GroupsConsistency[group] != model.GLOBAL {
+	if maps.Load(&c.Model.GroupsConsistency, group) != model.GLOBAL {
+		//c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself})
+		maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: textMessage.Content, Client: c.Model.Myself}))
 		c.Notifier.Notify(group)
 	} else {
-		c.appendSortedPending(textMessage, c.Model.Myself)
+		c.appendMsgToSortedPending(textMessage, c.Model.Myself)
 	}
-	c.multicastMessage(textMessage, c.Model.Groups[group])
+
+	c.Model.GroupsLocks[group].Unlock()
+	// c.multicastMessage(textMessage, c.Model.Groups[group])
+	c.multicastMessage(textMessage, maps.Load(&c.Model.Groups, group))
 }

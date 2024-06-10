@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"hash/fnv"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -32,11 +33,17 @@ func LogInit(logLevel log.Level) {
 		log.Warn("Log level set to ", logLevel)
 		log.SetReportCaller(true)
 	}
-
+	log.SetFormatter(&log.TextFormatter{})
 	// Output to stdout instead of the default stderr
 	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
 
 	// Only log the warning severity or above.
 	log.SetLevel(logLevel)
+}
+
+func Hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }
