@@ -91,7 +91,7 @@ func (c *Controller) syncReconnectedClient(client model.Client, reconnection boo
 			c.Model.GroupsLocks[group].Unlock()
 		}
 	}
-	c.Notifier.NotifyView("Connection restored to " + client.ConnectionString, color.BgGreen)
+	c.Notifier.NotifyView("Connection restored to "+client.ConnectionString, color.BgGreen)
 }
 
 func (c *Controller) AddNewConnections(connection []string) {
@@ -281,6 +281,11 @@ func (c *Controller) StartRetryMessages() {
 // If accepted the message is moved from the PendingBuffer to the StableBuffer
 func (c *Controller) tryAcceptMessage(message model.TextMessage, client model.Client) bool {
 
+	if maps.Load(&c.Model.Groups, message.Group) == nil {
+		log.Warnln("Group ", message.Group.Name, " does not exist")
+		return false
+	}
+
 	c.Model.GroupsLocks[message.Group].Lock()
 
 	// _logP, _ := json.Marshal(c.Model.PendingMessages[message.Group])
@@ -362,6 +367,26 @@ func (c *Controller) createGroup(group model.Group, consistencyModel model.Consi
 		maps.Store(&c.Model.MessageAcks, group, make(map[model.ScalarClockToProcId]map[string]bool))
 	}
 	return group
+}
+
+func (c *Controller) DeleteGroup(group model.Group) {
+
+	c.multicastMessage(
+		model.GroupDeleteMessage{
+			BaseMessage: model.BaseMessage{MessageType: model.GROUP_DELETE},
+			Group:       group}, maps.Load(&c.Model.Groups, group))
+	c.deleteGroup(group)
+}
+
+func (c *Controller) deleteGroup(group model.Group) {
+	maps.Delete(&c.Model.Groups, group)
+	maps.Delete(&c.Model.GroupsConsistency, group)
+	maps.Delete(&c.Model.GroupsVectorClocks, group)
+	maps.Delete(&c.Model.GroupsLocks, group)
+	maps.Delete(&c.Model.MessageAcks, group)
+	// delete pending and stable messages
+	maps.Delete(&c.Model.PendingMessages, group)
+	maps.Delete(&c.Model.StableMessages, group)
 }
 
 func (c *Controller) WaitForConnection(client model.Client) bool {

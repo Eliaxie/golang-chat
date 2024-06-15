@@ -232,6 +232,14 @@ func receiveLoop(ws *websocket.Conn, client *model.Client) {
 				controller.HandleGroupCreateMessage(groupCreateMsg, client)
 			}
 
+		case model.GROUP_DELETE:
+			var groupDeleteMsg model.GroupDeleteMessage
+			if err := json.Unmarshal(data, &groupDeleteMsg); err != nil {
+				log.Error("Error parsing GroupDeleteMessage:", err)
+			} else {
+				controller.HandleGroupDeleteMessage(groupDeleteMsg, client)
+			}
+
 		case model.CONN_RESTORE:
 			var connRestoreMsg model.ConnectionRestoreMessage
 			if err := json.Unmarshal(data, &connRestoreMsg); err != nil {

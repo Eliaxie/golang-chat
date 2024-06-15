@@ -232,6 +232,12 @@ func (c *Controller) HandleGroupCreateMessage(groupCreateMsg model.GroupCreateMe
 	c.Notifier.NotifyView("Group "+groupCreateMsg.Group.Name+" was created by "+client.Proc_id, color.BgGreen)
 }
 
+func (c *Controller) HandleGroupDeleteMessage(groupDeleteMsg model.GroupDeleteMessage, client *model.Client) {
+	c.deleteGroup(groupDeleteMsg.Group)
+	c.Notifier.NotifyView("Group "+groupDeleteMsg.Group.Name+" was deleted by "+client.Proc_id, color.BgGreen)
+	c.Notifier.NotifyDelete()
+}
+
 func (c *Controller) HandleTextMessage(textMsg model.TextMessage, client *model.Client) {
 	c.tryAcceptMessage(textMsg, *client)
 }

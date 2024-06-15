@@ -24,18 +24,29 @@ type MenuOption struct {
 
 func DisplayMenu(options []MenuOption) {
 	MoveScreenUp()
+	displayChoices(options)
+	for {
+		choice := ReadStringTrimmed()
+		if handleChoice(choice, options) {
+			break
+		}
+	}
+}
+
+
+func displayChoices(options []MenuOption) {
 	for i, option := range options {
 		fmt.Printf("%d. %s\n", i+1, option.Option)
 	}
-	for {
-		choice := ReadStringTrimmed()
+}
 
-		if choiceInt, err := strconv.Atoi(choice); err == nil && choiceInt > 0 && choiceInt <= len(options) {
-			options[choiceInt-1].Action()
-			break
-		} else {
-			color.Red("Invalid choice")
-		}
+func handleChoice(choice string, options []MenuOption) bool{
+	if choiceInt, err := strconv.Atoi(choice); err == nil && choiceInt > 0 && choiceInt <= len(options) {
+		options[choiceInt-1].Action()
+		return true
+	} else {
+		color.Red("Invalid choice")
+		return false
 	}
 }
 

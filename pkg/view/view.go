@@ -22,6 +22,13 @@ func Start(c *controller.Controller) {
 	_controller = c
 	color.Green("Welcome to the chat app")
 	_controller.Notifier.ListenView(DisplayString)
+	_controller.Notifier.ListenViewDelete(func() {
+		displayChoices([]MenuOption{
+			{"Add new connections", displayAddNewConnectionsMenu},
+			{"Create new Group", displayCreateNewGroup},
+			{"Open Group", displayOpenGroup},
+		})
+	})
 	port := displayInsertPort()
 	extIp := displayInsertExtPort("ws://localhost:" + strconv.Itoa(port) + "/ws")
 	username := displayInsertUsername()
@@ -70,6 +77,14 @@ func displayMainMenu() {
 			{"Open Group", displayOpenGroup},
 		})
 	}
+}
+
+func handleMainMenuChoice(presetChoice string) {
+	handleChoice(presetChoice, []MenuOption{
+		{"Add new connections", displayAddNewConnectionsMenu},
+		{"Create new Group", displayCreateNewGroup},
+		{"Open Group", displayOpenGroup},
+	})
 }
 
 func displayAddNewConnectionsMenu() {

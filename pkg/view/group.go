@@ -126,6 +126,7 @@ func displayGroup(group model.Group) {
 	color.Green("Previous messages in group:")
 	UpdateGroup(group)
 	color.Green("Entering room %s ( type '/exit' to leave the room '/list' to see other members )", group)
+	color.Green("Type '/delete' to delete the group")
 	_controller.Notifier.Listen(group, UpdateGroup)
 	inputLoop(group)
 }
@@ -143,6 +144,14 @@ func initializeGroupColors(group model.Group) {
 func inputLoop(group model.Group) {
 	for {
 		value := ReadStringTrimmed()
+
+		// check if group still exists
+		if maps.Load(&_controller.Model.Groups, group) == nil {
+			currentMessage = 0
+			handleMainMenuChoice(value)
+			break
+		}
+
 		if value == "/exit" {
 			_controller.Notifier.Remove(group)
 			currentMessage = 0
@@ -152,6 +161,15 @@ func inputLoop(group model.Group) {
 		if value == "/list" {
 			displayGroupMembers(group)
 			continue
+		}
+		if value == "/delete" {
+			_controller.Notifier.Remove(group)
+			_controller.DeleteGroup(group)
+			currentMessage = 0
+			DisplayString("Group "+group.Name+" deleted successfully", color.BgGreen)
+			//display main menu
+			displayMainMenu()
+			break
 		}
 
 		_controller.SendGroupMessage(value, group)

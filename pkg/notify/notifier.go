@@ -8,9 +8,11 @@ import (
 
 type GroupNotify func(model.Group)
 type ViewNotify func(string, ...color.Attribute)
+type DeleteNotify func()
 type Notifier struct {
-	notifyList   map[model.Group]GroupNotify
-	viewCallback ViewNotify
+	notifyList     map[model.Group]GroupNotify
+	viewCallback   ViewNotify
+	deleteCallback DeleteNotify
 }
 
 func NewNotifier() *Notifier {
@@ -36,6 +38,16 @@ func (notifier *Notifier) ListenView(callback ViewNotify) {
 func (notifier *Notifier) NotifyView(message string, colors ...color.Attribute) {
 	if notifier.viewCallback != nil {
 		notifier.viewCallback(message, colors...)
+	}
+}
+
+func (notifier *Notifier) ListenViewDelete(callback DeleteNotify) {
+	notifier.deleteCallback = callback
+}
+
+func (notifier *Notifier) NotifyDelete() {
+	if notifier.deleteCallback != nil {
+		notifier.deleteCallback()
 	}
 }
 
