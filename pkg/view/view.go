@@ -10,7 +10,6 @@ import (
 
 	"golang-chat/pkg/controller"
 	"golang-chat/pkg/model"
-	"golang-chat/pkg/utils"
 
 	"github.com/fatih/color"
 )
@@ -91,34 +90,10 @@ func displayAddNewConnectionsMenu() {
 	inMenu := true
 	for inMenu {
 		DisplayMenu([]MenuOption{
-			{"Add Connection From File", displayAddConnectionFromFile},
 			{"Add Connection Manually", displayAddConnectionManually},
 			{"Back", func() { inMenu = false }},
 		})
 	}
-}
-
-func displayAddConnectionFromFile() {
-	MoveScreenUp()
-	fmt.Print("Enter the file path (\"q\" to go back): ")
-	var connections []string
-	for {
-		filePath := ReadStringTrimmed()
-		if filePath == "q" {
-			return
-		}
-
-		// call the function to add the connections from the file
-		var err error
-		connections, err = utils.ReadConnectionsFromFile(filePath)
-		if err != nil {
-			_controller.AddNewConnections(connections)
-			break
-		}
-		fmt.Println("Error while trying to read the file. Please try again. (\"q\" to go back)")
-	}
-	log.Infoln("Connections added successfully")
-	log.Debugln(connections)
 }
 
 func displayAddConnectionManually() {

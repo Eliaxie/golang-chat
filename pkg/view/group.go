@@ -33,17 +33,11 @@ func displayCreateNewGroup() {
 	}
 
 	DisplayMenu([]MenuOption{
-		{"FIFO", func() {
-			selectModel(&groupInfo.ConsistencyModel, model.FIFO)
-		}},
 		{"CAUSAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.CAUSAL)
 		}},
 		{"GLOBAL", func() {
 			selectModel(&groupInfo.ConsistencyModel, model.GLOBAL)
-		}},
-		{"LINEARIZABLE", func() {
-			selectModel(&groupInfo.ConsistencyModel, model.LINEARIZABLE)
 		}},
 	})
 
