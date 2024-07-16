@@ -248,7 +248,8 @@ func (c *Controller) HandleMessageAck(messageAck model.MessageAck, client *model
 	_scalarClock := maps.Load(&_group, messageAck.Reference)
 	if _scalarClock == nil {
 		//c.Model.MessageAcks[messageAck.Group][messageAck.Reference] = map[string]bool{}
-		maps.Store(&_group, messageAck.Reference, map[string]bool{})
+		_scalarClock = map[string]bool{}
+		maps.Store(&_group, messageAck.Reference, _scalarClock)
 	}
 	//c.Model.MessageAcks[messageAck.Group][messageAck.Reference][client.Proc_id] = true
 	maps.Store(&_scalarClock, client.Proc_id, true)
