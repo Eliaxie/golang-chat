@@ -78,7 +78,8 @@ func (c *Controller) tryAcceptGlobalMessages(message model.TextMessage, client m
 	_scalarClock := maps.Load(&_group, scalarClock)
 	if _scalarClock == nil {
 		//c.Model.MessageAcks[message.Group][scalarClock] = map[string]bool{}
-		maps.Store(&_group, scalarClock, map[string]bool{})
+		_scalarClock = map[string]bool{}
+		maps.Store(&_group, scalarClock, _scalarClock)
 	}
 	// mark the message sender as acked
 	//c.Model.MessageAcks[message.Group][scalarClock][client.Proc_id] = true
