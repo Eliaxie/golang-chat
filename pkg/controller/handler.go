@@ -325,7 +325,8 @@ func (c *Controller) HandleClientDisconnectMessage(clientDisconnectMsg model.Cli
 		_scalarClock := maps.Load(&_group, newPending.ScalarClock)
 		if _scalarClock == nil {
 			//c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock] = map[string]bool{}
-			maps.Store(&_group, newPending.ScalarClock, map[string]bool{})
+			_scalarClock = map[string]bool{}
+			maps.Store(&_group, newPending.ScalarClock, _scalarClock)
 		}
 		// mark the message sender as acked
 		//c.Model.MessageAcks[clientDisconnectMsg.Group][newPending.ScalarClock][client.Proc_id] = true
