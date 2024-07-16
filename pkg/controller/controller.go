@@ -119,72 +119,72 @@ func (c *Controller) DisconnectClient(disconnectedClient model.Client) {
 
 				case model.GLOBAL:
 					// if client is already marked as disconnected, do nothing
-					if !maps.Load(&c.Model.Clients, disconnectedClient) {
-						break
-					}
+					// if !maps.Load(&c.Model.Clients, disconnectedClient) {
+					// 	break
+					// }
 
-					c.Model.DisconnectionLocks[group].Lock()
-					//c.Model.Clients[disconnectedClient] = false
-					maps.Store(&c.Model.Clients, disconnectedClient, false)
-					c.Model.DisconnectionLocks[group].Unlock()
+					// c.Model.DisconnectionLocks[group].Lock()
+					// //c.Model.Clients[disconnectedClient] = false
+					// maps.Store(&c.Model.Clients, disconnectedClient, false)
+					// c.Model.DisconnectionLocks[group].Unlock()
 
-					// todo: stop sending messages (locks?) and modifing group data
-					c.Model.GroupsLocks[group].Lock()
-					clientsToNotify := make([]model.Client, 0)
-					for _, activeClient := range maps.Load(&c.Model.Groups, group) {
-						if maps.Load(&c.Model.Clients, activeClient) {
-							clientsToNotify = append(clientsToNotify, activeClient)
-						}
-					}
+					// // todo: stop sending messages (locks?) and modifing group data
+					// c.Model.GroupsLocks[group].Lock()
+					// clientsToNotify := make([]model.Client, 0)
+					// for _, activeClient := range maps.Load(&c.Model.Groups, group) {
+					// 	if maps.Load(&c.Model.Clients, activeClient) {
+					// 		clientsToNotify = append(clientsToNotify, activeClient)
+					// 	}
+					// }
 
-					// initiate the disconnection ack array
-					acks := make(map[string]struct{})
-					// c.Model.DisconnectionAcks[group] = acks
-					maps.Store(&c.Model.DisconnectionAcks, group, acks)
-					c.Model.DisconnectionLocks[group] = &sync.Mutex{}
+					// // initiate the disconnection ack array
+					// acks := make(map[string]struct{})
+					// // c.Model.DisconnectionAcks[group] = acks
+					// maps.Store(&c.Model.DisconnectionAcks, group, acks)
+					// c.Model.DisconnectionLocks[group] = &sync.Mutex{}
 
-					// get all pending messages for group sent by disconnected client
-					disconnectedPendings := []model.PendingMessage{}
-					for _, pendingMessage := range c.Model.PendingMessages[group] {
-						if pendingMessage.Client == disconnectedClient {
-							disconnectedPendings = append(disconnectedPendings, pendingMessage)
-						}
-					}
+					// // get all pending messages for group sent by disconnected client
+					// disconnectedPendings := []model.PendingMessage{}
+					// for _, pendingMessage := range c.Model.PendingMessages[group] {
+					// 	if pendingMessage.Client == disconnectedClient {
+					// 		disconnectedPendings = append(disconnectedPendings, pendingMessage)
+					// 	}
+					// }
 
-					// send a message CLIENT_DISCONNECTED to all active clients
-					c.multicastMessage(
-						model.ClientDisconnectMessage{
-							BaseMessage:     model.BaseMessage{MessageType: model.CLIENT_DISC},
-							Group:           group,
-							Client:          model.SerializedClient{Proc_id: disconnectedClient.Proc_id, HostName: disconnectedClient.ConnectionString},
-							PendingMessages: disconnectedPendings,
-						}, clientsToNotify)
+					// // send a message CLIENT_DISCONNECTED to all active clients
+					// c.multicastMessage(
+					// 	model.ClientDisconnectMessage{
+					// 		BaseMessage:     model.BaseMessage{MessageType: model.CLIENT_DISC},
+					// 		Group:           group,
+					// 		Client:          model.SerializedClient{Proc_id: disconnectedClient.Proc_id, HostName: disconnectedClient.ConnectionString},
+					// 		PendingMessages: disconnectedPendings,
+					// 	}, clientsToNotify)
 
-					// wait for acks from all the clients
-					for len(acks) < len(clientsToNotify) {
-						for _, activeClient := range clientsToNotify {
-							acknowledged := false
-							inActiveWindow := true
-							for !acknowledged && inActiveWindow {
-								c.Model.DisconnectionLocks[group].Lock()
-								_, acknowledged = acks[activeClient.Proc_id]
-								//_, inActiveWindow = c.Model.Clients[activeClient]
-								maps.Load(&c.Model.Clients, activeClient)
-								c.Model.DisconnectionLocks[group].Unlock()
-								time.Sleep(100 * time.Millisecond)
-							}
-							log.Debugln("exit ack loop for ", activeClient.Proc_id, " acknowledged: ", acknowledged, " inActiveWindow: ", inActiveWindow)
-						}
-					}
+					// // wait for acks from all the clients
+					// for len(acks) < len(clientsToNotify) {
+					// 	for _, activeClient := range clientsToNotify {
+					// 		acknowledged := false
+					// 		inActiveWindow := true
+					// 		for !acknowledged && inActiveWindow {
+					// 			c.Model.DisconnectionLocks[group].Lock()
+					// 			_, acknowledged = acks[activeClient.Proc_id]
+					// 			//_, inActiveWindow = c.Model.Clients[activeClient]
+					// 			maps.Load(&c.Model.Clients, activeClient)
+					// 			c.Model.DisconnectionLocks[group].Unlock()
+					// 			time.Sleep(100 * time.Millisecond)
+					// 		}
+					// 		log.Debugln("exit ack loop for ", activeClient.Proc_id, " acknowledged: ", acknowledged, " inActiveWindow: ", inActiveWindow)
+					// 	}
+					// }
 
-					// check if majority partitioned
-					// if len(acks)+1 > (len(c.Model.Groups[group]))/2 {
-					if len(acks)+1 > (len(maps.Load(&c.Model.Groups, group)))/2 {
-						log.Infoln("Group ", group.Name, " majority partitioned after client ", disconnectedClient.Proc_id, " disconnected")
-						// try to accept the messages with the new active window
-						c.tryAcceptTopGlobals(group)
-					}
-					// resume sending messages (locks?)
+					// // check if majority partitioned
+					// // if len(acks)+1 > (len(c.Model.Groups[group]))/2 {
+					// if len(acks)+1 > (len(maps.Load(&c.Model.Groups, group)))/2 {
+					// 	log.Infoln("Group ", group.Name, " majority partitioned after client ", disconnectedClient.Proc_id, " disconnected")
+					// 	// try to accept the messages with the new active window
+					// 	c.tryAcceptTopGlobals(group)
+					// }
+					// // resume sending messages (locks?)
 					c.Model.GroupsLocks[group].Unlock()
 				case model.CAUSAL:
 					//controller.Model.Clients[disconnectedClient] = false

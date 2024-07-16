@@ -142,7 +142,8 @@ func (c *Controller) tryAcceptTopGlobals(group model.Group) bool {
 		c.Model.StableMessages[group] = append(c.Model.StableMessages[group], model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client})
 		maps.Store(&c.Model.StableMessages, group, append(maps.Load(&c.Model.StableMessages, group), model.StableMessage{Content: pendingMessage.Content, Client: pendingMessage.Client}))
 		//c.Model.PendingMessages[group] = removeAtIndex(c.Model.PendingMessages[group], 0)
-		maps.Store(&c.Model.PendingMessages, group, removeAtIndex(maps.Load(&c.Model.PendingMessages, group), 0))
+		newPending := removeAtIndex(maps.Load(&c.Model.PendingMessages, group), 0)
+		maps.Store(&c.Model.PendingMessages, group, newPending)
 		//c.Model.MessageAcks[group][pendingMessage.ScalarClock] = map[string]bool{}
 		_group := maps.Load(&c.Model.MessageAcks, group)
 		maps.Store(&_group, pendingMessage.ScalarClock, map[string]bool{})

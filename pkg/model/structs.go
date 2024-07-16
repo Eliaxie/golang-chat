@@ -53,6 +53,7 @@ func (m MessageType) String() string {
 		"SYNC_PEERS",
 		"SYNC_PEERS_RESPONSE",
 		"GROUP_CREATE",
+		"GROUP_DELETE",
 		"MESSAGE_ACK",
 		"CLIENT_DISC",
 		"DISC_ACK",
