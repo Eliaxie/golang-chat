@@ -157,7 +157,7 @@ var pingSync *sync.Mutex = &sync.Mutex{}
 func receiveLoop(ws *websocket.Conn, client *model.Client) {
 	for {
 		var data []byte
-		ws.SetReadDeadline(time.Now().Add(PING_INTERVAL_MS * 5 * time.Millisecond))
+		ws.SetReadDeadline(time.Now().Add(PING_INTERVAL_MS * 25 * time.Millisecond))
 		messageType, data, err := ws.ReadMessage()
 		if err != nil {
 			log.Errorln(err)
