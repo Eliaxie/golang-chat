@@ -47,8 +47,11 @@ You can customize the log level at startup using the `-v` flag. The number of `v
 ![connection protocol](https://www.plantuml.com/plantuml/dpng/ZP8nJyCm48Lt_mgpqI7v0GXG0J6m8Jfag2hasa-9rUHSsPV-Ve8ZYpfr9BhTzRvtvvUt3QmyZqClxhZ30AazLwq7IBpqLaDMp_BL7HzaWsDm-WIMbYmBfTbU5EFtpxyY8c9goSTg0cDvZNQAJEZK2KBCyjDScle46KljMsz17FQJIBs3ly2_apaxItoGJvBz21b_zOt0J3PhQBFx3h6P-7XdUjvYUvIiv-fcVmQchIKaxTMnEMFxpXe3EYHtX47cfLZuhXqHfW577sHP3WX1jOXKPdecidvWCcRrm8GPz63S_yUNJGai-r96ClLaSvg8pQKFNmXdHm4bFmg9pACYowyh1cTJIbkKk8AMoLpzqFbLMv0PX_u7)
 
 
-# Reconnection 
-## After crash
+## Reconnection
+
+### After crash
+
+```text
 A -> B
 A -> C
 gruppo A,C,B = Ciao
@@ -65,11 +68,14 @@ A -> C ConnectionInitMessage
   C -> A ConnectionInitResponseMessage
   C -> A ConnectionRestoreMessage (gruppo Ciao, clients: A,B,C)
 -----
-  A: Gestisco ConnectionRestoreMessag da C ad A
+A: Gestisco ConnectionRestoreMessage da C ad A
 // <=
 A: Gestisco ConnectionRestoreMessage da C
+```
 
-## After partition
+### After partition
+
+```text
 A -> B
 A -> C
 gruppo A,C,B = Ciao
@@ -83,37 +89,49 @@ A,B StartRetryMessages =>
   A, B: Stale messages found - retry send MessageExitBuffer
 
 A,B MessageExitBuffer cleared - resync completed
+```
 
-## Test Cases:
+### Test cases
+
 Legend:
-- Connection: <=>
-- Message: ->
 
-1. {A<=>B}<=>{C<=>D}. {A,B}=/={C,D}.
-  1. After partition:
-    - A <=> B
-      - 1. A -> B
-      - 1. A -> C: Not received
-      - 1. A -> D: Not received
-      - 2. B -> A
-      - 2. B -> C: Not received
-      - 2. B -> D: Not received
-    - C <=> D
-      - 3. C -> D
-      - 3. C -> A: Not received
-      - 3. C -> B: Not received
-      - 4. D -> C
-      - 4. D -> A: Not received
-      - 4. D -> B: Not received
-  1. Partition Restored:
-      - 1. A -> C
-      - 1. A -> D
-      - 2. B -> C
-      - 2. B -> D
-      - 3. C -> A
-      - 3. C -> B
-      - 4. D -> A
-      - 4. D -> B
-      - 5. A -> B
-      - 5. A -> C
-      - 5. A -> D
+- Connection: `<=>`
+- Message: `->`
+
+Initial topology: `{A <=> B} <=> {C <=> D}`. Partition: `{A, B} =/= {C, D}`.
+
+**After partition**
+
+```text
+A <=> B
+  A -> B
+  A -> C: Not received
+  A -> D: Not received
+  B -> A
+  B -> C: Not received
+  B -> D: Not received
+
+C <=> D
+  C -> D
+  C -> A: Not received
+  C -> B: Not received
+  D -> C
+  D -> A: Not received
+  D -> B: Not received
+```
+
+**Partition restored**
+
+```text
+A -> C
+A -> D
+B -> C
+B -> D
+C -> A
+C -> B
+D -> A
+D -> B
+A -> B
+A -> C
+A -> D
+```
